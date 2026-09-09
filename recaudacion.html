@@ -507,7 +507,11 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
   // así que NO se descuenta del efectivo a depositar. Solo la comisión de sucursal reduce
   // ese monto. La comisión por medio de pago sigue existiendo como gasto (ver comisionPago,
   // comisionTotal) pero se liquida aparte, con lo recaudado por esos medios electrónicos.
-  function breakdownFor(entry, pct, config) {
+  // `web`: si la sucursal está marcada como Venta Web, el boleto cancelado sale de la
+  // recaudación web (no toca "Efectivo" — ese dinero nunca fue caja física). Si no es
+  // web, la devolución sale siempre del Efectivo de esa sucursal/usuario, sin importar
+  // el medio de pago original del boleto cancelado.
+  function breakdownFor(entry, pct, config, web) {
     const bruto = sumPM(entry);
     const devolucion = entry.devolucion || 0;
     const ventaNeta = bruto - devolucion;
@@ -515,7 +519,7 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
     const comisionPago = PM_KEYS.reduce((a, k) => a + entry[k] * pmPctFor(config, k) / 100, 0);
     const comisionTotal = comisionSuc + comisionPago;
     const neto = ventaNeta - comisionTotal;
-    const brutoADepositar = entry.efectivo; // caja física, sin descuentos
+    const brutoADepositar = web ? entry.efectivo : (entry.efectivo - devolucion);
     const disponible = brutoADepositar - comisionSuc; // solo la comisión de sucursal afecta el efectivo a depositar
     return { bruto, devolucion, ventaNeta, comisionSuc, comisionPago, comisionTotal, neto, brutoADepositar, disponible };
   }
@@ -525,14 +529,16 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
     const count = Object.values(state.sucursales[s]).reduce((a, u) => a + u.count, 0);
     const canceladas = sucCanceladas(state, s);
     const pct = pctFor(config, s);
-    const b = breakdownFor(Object.assign({ devolucion: sucDevolucion(state, s) }, pm), pct, config);
-    return Object.assign({ sucursal: s, pm, count, canceladas, pct }, b);
+    const web = isWeb(config, s);
+    const b = breakdownFor(Object.assign({ devolucion: sucDevolucion(state, s) }, pm), pct, config, web);
+    return Object.assign({ sucursal: s, pm, count, canceladas, pct, web }, b);
   }
 
   function userBreakdown(state, config, s, u) {
     const entry = state.sucursales[s][u];
     const pct = pctFor(config, s);
-    const b = breakdownFor(entry, pct, config);
+    const web = isWeb(config, s);
+    const b = breakdownFor(entry, pct, config, web);
     return Object.assign({ sucursal: s, usuario: u, entry, pct }, b);
   }
 
@@ -545,18 +551,23 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
     let grandTotal = 0, grandCount = 0, grandDevolucion = 0, grandCanceladas = 0;
     let comisionSucTotal = 0, comisionSucTotalNonWeb = 0;
     let grandWeb = 0, webSucCount = 0;
+    let grandCajaNeta = 0; // suma del Efectivo ya neto de cancelaciones, solo sucursales no-web
 
     names.forEach(s => {
       const sb = sucBreakdown(state, config, s);
       grandDevolucion += sb.devolucion;
       grandCanceladas += sb.canceladas;
       comisionSucTotal += sb.comisionSuc;
-      const web = isWeb(config, s);
-      if (web) { grandWeb += sb.bruto; webSucCount++; }
-      else comisionSucTotalNonWeb += sb.comisionSuc;
+      if (sb.web) {
+        grandWeb += sb.ventaNeta; // la cancelación de una sucursal web sale de su propia recaudación
+        webSucCount++;
+      } else {
+        comisionSucTotalNonWeb += sb.comisionSuc;
+        grandCajaNeta += sb.brutoADepositar; // ya neto: la cancelación siempre sale del efectivo aquí
+      }
       PM_KEYS.forEach(k => {
         grand[k] += sb.pm[k];
-        if (!web) grandNonWeb[k] += sb.pm[k];
+        if (!sb.web) grandNonWeb[k] += sb.pm[k];
       });
       grandTotal += sb.bruto;
       grandCount += sb.count;
@@ -568,16 +579,18 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
     const netoTotal = ventaNetaTotal - comisionTotal;
 
     // Bruto/disponible de caja: SOLO la comisión de sucursal toca el efectivo físico
-    // (sin venta web). La comisión por medio de pago es un gasto de la empresa frente
-    // al procesador — se liquida contra lo recaudado por esos medios, no contra la caja.
-    const brutoADepositar = grandNonWeb.efectivo;
+    // (sin venta web, ya neto de sus propias cancelaciones). La comisión por medio de
+    // pago es un gasto de la empresa frente al procesador — se liquida aparte, contra
+    // lo recaudado por esos medios, nunca contra la caja.
+    const brutoADepositar = grandCajaNeta;
     const disponibleCaja = brutoADepositar - comisionSucTotalNonWeb;
 
-    // Colección de medios de pago (todo lo no-efectivo, de todas las sucursales incluida
-    // venta web): acá sí se aplica su comisión, para saber cuánto llega neto del procesador.
+    // Colección de medios de pago: SOLO sucursales no-web (la venta web ya se contó
+    // completa, neta de cancelaciones, en "Venta Web" — incluirla de nuevo aquí sería
+    // duplicarla). Acá sí se aplica su comisión, para saber cuánto llega neto del procesador.
     const pmKeysNoCash = PM_KEYS.filter(k => k !== 'efectivo');
-    const coleccionMediosPago = pmKeysNoCash.reduce((a, k) => a + grand[k] - grand[k] * pmPctFor(config, k) / 100, 0);
-    const comisionMediosPagoNoCash = pmKeysNoCash.reduce((a, k) => a + grand[k] * pmPctFor(config, k) / 100, 0);
+    const coleccionMediosPago = pmKeysNoCash.reduce((a, k) => a + grandNonWeb[k] - grandNonWeb[k] * pmPctFor(config, k) / 100, 0);
+    const comisionMediosPagoNoCash = pmKeysNoCash.reduce((a, k) => a + grandNonWeb[k] * pmPctFor(config, k) / 100, 0);
 
     // Total disponible de la empresa = caja física neta de su comisión + medios de pago netos de la suya.
     const totalDisponible = disponibleCaja + coleccionMediosPago;
@@ -598,16 +611,20 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
     const day = state.daily[dkey] || {};
     const list = sucList === '__all__' ? Object.keys(day) : sucList.filter(s => day[s]);
     const pm = emptyPM();
-    let devolucion = 0, comisionSuc = 0;
+    let devolucion = 0, devolucionEfectivo = 0, comisionSuc = 0;
     list.forEach(s => {
       const dayObj = day[s];
-      devolucion += dayObj.devolucion || 0;
-      comisionSuc += (sumPM(dayObj) - (dayObj.devolucion || 0)) * pctFor(config, s) / 100;
+      const dev = dayObj.devolucion || 0;
+      devolucion += dev;
+      // igual que a nivel de sucursal: si es web, la cancelación sale de su propia
+      // recaudación (no del efectivo); si no, siempre sale del efectivo.
+      if (!isWeb(config, s)) devolucionEfectivo += dev;
+      comisionSuc += (sumPM(dayObj) - dev) * pctFor(config, s) / 100;
       PM_KEYS.forEach(k => pm[k] += dayObj[k]);
     });
     const comisionPago = PM_KEYS.reduce((a, k) => a + pm[k] * pmPctFor(config, k) / 100, 0);
     const comisionTotal = comisionSuc + comisionPago;
-    const brutoADepositar = pm.efectivo;
+    const brutoADepositar = pm.efectivo - devolucionEfectivo;
     // Solo la comisión de sucursal descuenta el efectivo — la de medio de pago es gasto
     // de la empresa frente al procesador, no sale de la caja.
     const disponible = brutoADepositar - comisionSuc;
@@ -760,7 +777,7 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
       [],
       ['Total recaudado (bruto, todas las sucursales)', round(g.grandTotal)],
       ...PM_HEADERS.map((label, i) => [label + ' (sin venta web)', round(g.grandNonWeb[PM_KEYS[i]])]),
-      ['Venta Web', round(g.grandWeb)],
+      ['Venta Web (ya neta de sus propios boletos cancelados)', round(g.grandWeb)],
       ['Boletos cancelados (monto)', round(g.grandDevolucion)],
       ['Boletos cancelados (cantidad)', g.grandCanceladas],
       ['Comisión sucursal (total, descuenta el efectivo)', round(g.comisionSucTotal)],
@@ -768,7 +785,7 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
       ['Comisión total aplicada', round(g.comisionTotal)],
       ['Total neto a rendir (referencia contable)', round(g.netoTotal)],
       [],
-      ['Bruto a depositar (efectivo físico, sin venta web)', round(g.brutoADepositar)],
+      ['Bruto a depositar (efectivo físico, sin venta web, ya neto de boletos cancelados)', round(g.brutoADepositar)],
       ['Disponible de caja (bruto a depositar − comisión sucursal)', round(g.disponibleCaja)],
       ['Colección medios de pago (GetNet+Tarjeta+Transferencia+Otros, neto de su comisión)', round(g.coleccionMediosPago)],
       ['Total disponible (caja neta + medios de pago netos)', round(g.totalDisponible)]
@@ -1023,7 +1040,7 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
       <div class="kpi-card deposito">
         <div class="label">Bruto a depositar</div>
         <div class="val">${fmt(g.brutoADepositar)}</div>
-        <div class="meta">Efectivo físico de caja (sin venta web). Disponible de caja tras su comisión de sucursal: <b>${fmt(g.disponibleCaja)}</b>.</div>
+        <div class="meta">Efectivo físico de caja (sin venta web), ya neto de boletos cancelados. Disponible de caja tras su comisión de sucursal: <b>${fmt(g.disponibleCaja)}</b>.</div>
       </div>
       <div class="kpi-card comision">
         <div class="label">Comisión total aplicada</div>
@@ -1081,14 +1098,20 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
       const sb = Calc.sucBreakdown(state, config, s);
       const uNames = Object.keys(state.sucursales[s]).sort((a, b) => sumPM(state.sucursales[s][b]) - sumPM(state.sucursales[s][a]));
       const web = Calc.isWeb(config, s);
-      const hasDeduccion = sb.devolucion > 0 || sb.comisionSuc > 0;
+      // Para una sucursal Web, "Disponible" no resta cancelaciones (esas salen de Venta
+      // Web, no del efectivo) — el encabezado usaría el mismo número que el bruto, dando
+      // la falsa impresión de que no hay nada descontado. Ahí el titular es "Neto a
+      // rendir" (sí refleja cancelaciones y comisiones). Para una sucursal física, el
+      // titular es "Disponible" (ya neto de sus cancelaciones y de su comisión).
+      const headline = web ? sb.neto : sb.disponible;
+      const showBrutoSub = Math.round(headline) !== Math.round(sb.bruto);
 
       html += `<details class="suc-card" ${i < 2 ? 'open' : ''}>
         <summary>
           <span class="chev"></span>
           <span class="name">${esc(s)}${web ? ' <span class="pill web">Venta Web</span>' : ''}<small>${uNames.length} usuario${uNames.length !== 1 ? 's' : ''} · ${fmtNum(sb.count)} transacciones${sb.canceladas ? ' · ' + fmtNum(sb.canceladas) + ' cancelada' + (sb.canceladas !== 1 ? 's' : '') : ''}${sb.pct ? ' · comisión sucursal ' + sb.pct + '%' : ''}</small></span>
           <span class="mini-bar">${PM_KEYS.map(k => `<span style="flex:${Math.max(sb.pm[k], 1)};background:var(--p-${k})"></span>`).join('')}</span>
-          <span class="suc-total">${fmt(hasDeduccion ? sb.disponible : sb.bruto)}${hasDeduccion ? `<small>bruto ${fmt(sb.bruto)}</small>` : ''}</span>
+          <span class="suc-total">${fmt(headline)}${showBrutoSub ? `<small>bruto ${fmt(sb.bruto)}</small>` : ''}</span>
         </summary>
         <div class="suc-body"><div class="table-scroll"><table>
           <thead><tr><th>Usuario</th><th>${pmHeadCell('efectivo')}</th><th>${pmHeadCell('getnet')}</th><th>${pmHeadCell('tarjeta')}</th><th>${pmHeadCell('transferencia')}</th><th>${pmHeadCell('otros')}</th><th>Total bruto</th><th>Transacciones</th><th>Cancelados</th><th>Com. sucursal${sb.pct ? ` (${sb.pct}%)` : ''}</th><th>Com. medio de pago<small>gasto empresa</small></th><th>Disponible</th></tr></thead>
@@ -1118,8 +1141,8 @@ svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
         <td class="num">${sb.comisionSuc ? `−${fmt(sb.comisionSuc)}` : '—'}</td>
         <td class="num">${sb.comisionPago ? `−${fmt(sb.comisionPago)}` : '—'}</td>
         <td class="num"><b>${fmt(sb.disponible)}</b></td></tr>`;
-      if (sb.devolucion > 0) html += `<tr class="comisionrow"><td colspan="11">Boletos cancelados (${fmtNum(sb.canceladas)})</td><td class="num">−${fmt(sb.devolucion)}</td></tr>`;
-      html += `<tr class="netorow"><td colspan="11">Bruto a depositar (solo Efectivo)</td><td class="num">${fmt(sb.brutoADepositar)}</td></tr>`;
+      if (sb.devolucion > 0) html += `<tr class="comisionrow"><td colspan="11">Boletos cancelados (${fmtNum(sb.canceladas)})${web ? ' — sale de la venta web' : ' — sale siempre del efectivo, sin importar el medio de pago original'}</td><td class="num">−${fmt(sb.devolucion)}</td></tr>`;
+      html += `<tr class="netorow"><td colspan="11">Bruto a depositar (Efectivo${web ? '' : ', ya neto de boletos cancelados'})</td><td class="num">${fmt(sb.brutoADepositar)}</td></tr>`;
       if (sb.comisionSuc > 0) html += `<tr class="comisionrow"><td colspan="11">Comisión sucursal (${sb.pct}% sobre venta neta de cancelaciones) — sí descuenta el efectivo</td><td class="num">−${fmt(sb.comisionSuc)}</td></tr>`;
       html += `<tr class="netorow disponible"><td colspan="11">Disponible de esta sucursal (efectivo − comisión sucursal)</td><td class="num">${fmt(sb.disponible)}</td></tr>`;
       if (sb.comisionPago > 0) html += `<tr class="comisionrow"><td colspan="11">Comisión por medio de pago — gasto de la empresa frente al procesador, NO descuenta este efectivo</td><td class="num">−${fmt(sb.comisionPago)}</td></tr>`;

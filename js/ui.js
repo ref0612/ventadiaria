@@ -158,7 +158,7 @@
       <div class="kpi-card deposito">
         <div class="label">Bruto a depositar</div>
         <div class="val">${fmt(g.brutoADepositar)}</div>
-        <div class="meta">Efectivo físico de caja (sin venta web). Disponible de caja tras su comisión de sucursal: <b>${fmt(g.disponibleCaja)}</b>.</div>
+        <div class="meta">Efectivo físico de caja (sin venta web), ya neto de boletos cancelados. Disponible de caja tras su comisión de sucursal: <b>${fmt(g.disponibleCaja)}</b>.</div>
       </div>
       <div class="kpi-card comision">
         <div class="label">Comisión total aplicada</div>
@@ -216,14 +216,20 @@
       const sb = Calc.sucBreakdown(state, config, s);
       const uNames = Object.keys(state.sucursales[s]).sort((a, b) => sumPM(state.sucursales[s][b]) - sumPM(state.sucursales[s][a]));
       const web = Calc.isWeb(config, s);
-      const hasDeduccion = sb.devolucion > 0 || sb.comisionSuc > 0;
+      // Para una sucursal Web, "Disponible" no resta cancelaciones (esas salen de Venta
+      // Web, no del efectivo) — el encabezado usaría el mismo número que el bruto, dando
+      // la falsa impresión de que no hay nada descontado. Ahí el titular es "Neto a
+      // rendir" (sí refleja cancelaciones y comisiones). Para una sucursal física, el
+      // titular es "Disponible" (ya neto de sus cancelaciones y de su comisión).
+      const headline = web ? sb.neto : sb.disponible;
+      const showBrutoSub = Math.round(headline) !== Math.round(sb.bruto);
 
       html += `<details class="suc-card" ${i < 2 ? 'open' : ''}>
         <summary>
           <span class="chev"></span>
           <span class="name">${esc(s)}${web ? ' <span class="pill web">Venta Web</span>' : ''}<small>${uNames.length} usuario${uNames.length !== 1 ? 's' : ''} · ${fmtNum(sb.count)} transacciones${sb.canceladas ? ' · ' + fmtNum(sb.canceladas) + ' cancelada' + (sb.canceladas !== 1 ? 's' : '') : ''}${sb.pct ? ' · comisión sucursal ' + sb.pct + '%' : ''}</small></span>
           <span class="mini-bar">${PM_KEYS.map(k => `<span style="flex:${Math.max(sb.pm[k], 1)};background:var(--p-${k})"></span>`).join('')}</span>
-          <span class="suc-total">${fmt(hasDeduccion ? sb.disponible : sb.bruto)}${hasDeduccion ? `<small>bruto ${fmt(sb.bruto)}</small>` : ''}</span>
+          <span class="suc-total">${fmt(headline)}${showBrutoSub ? `<small>bruto ${fmt(sb.bruto)}</small>` : ''}</span>
         </summary>
         <div class="suc-body"><div class="table-scroll"><table>
           <thead><tr><th>Usuario</th><th>${pmHeadCell('efectivo')}</th><th>${pmHeadCell('getnet')}</th><th>${pmHeadCell('tarjeta')}</th><th>${pmHeadCell('transferencia')}</th><th>${pmHeadCell('otros')}</th><th>Total bruto</th><th>Transacciones</th><th>Cancelados</th><th>Com. sucursal${sb.pct ? ` (${sb.pct}%)` : ''}</th><th>Com. medio de pago<small>gasto empresa</small></th><th>Disponible</th></tr></thead>
@@ -253,8 +259,8 @@
         <td class="num">${sb.comisionSuc ? `−${fmt(sb.comisionSuc)}` : '—'}</td>
         <td class="num">${sb.comisionPago ? `−${fmt(sb.comisionPago)}` : '—'}</td>
         <td class="num"><b>${fmt(sb.disponible)}</b></td></tr>`;
-      if (sb.devolucion > 0) html += `<tr class="comisionrow"><td colspan="11">Boletos cancelados (${fmtNum(sb.canceladas)})</td><td class="num">−${fmt(sb.devolucion)}</td></tr>`;
-      html += `<tr class="netorow"><td colspan="11">Bruto a depositar (solo Efectivo)</td><td class="num">${fmt(sb.brutoADepositar)}</td></tr>`;
+      if (sb.devolucion > 0) html += `<tr class="comisionrow"><td colspan="11">Boletos cancelados (${fmtNum(sb.canceladas)})${web ? ' — sale de la venta web' : ' — sale siempre del efectivo, sin importar el medio de pago original'}</td><td class="num">−${fmt(sb.devolucion)}</td></tr>`;
+      html += `<tr class="netorow"><td colspan="11">Bruto a depositar (Efectivo${web ? '' : ', ya neto de boletos cancelados'})</td><td class="num">${fmt(sb.brutoADepositar)}</td></tr>`;
       if (sb.comisionSuc > 0) html += `<tr class="comisionrow"><td colspan="11">Comisión sucursal (${sb.pct}% sobre venta neta de cancelaciones) — sí descuenta el efectivo</td><td class="num">−${fmt(sb.comisionSuc)}</td></tr>`;
       html += `<tr class="netorow disponible"><td colspan="11">Disponible de esta sucursal (efectivo − comisión sucursal)</td><td class="num">${fmt(sb.disponible)}</td></tr>`;
       if (sb.comisionPago > 0) html += `<tr class="comisionrow"><td colspan="11">Comisión por medio de pago — gasto de la empresa frente al procesador, NO descuenta este efectivo</td><td class="num">−${fmt(sb.comisionPago)}</td></tr>`;

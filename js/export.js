@@ -48,7 +48,7 @@
       [],
       ['Total recaudado (bruto, todas las sucursales)', round(g.grandTotal)],
       ...PM_HEADERS.map((label, i) => [label + ' (sin venta web)', round(g.grandNonWeb[PM_KEYS[i]])]),
-      ['Venta Web', round(g.grandWeb)],
+      ['Venta Web (ya neta de sus propios boletos cancelados)', round(g.grandWeb)],
       ['Boletos cancelados (monto)', round(g.grandDevolucion)],
       ['Boletos cancelados (cantidad)', g.grandCanceladas],
       ['Comisión sucursal (total, descuenta el efectivo)', round(g.comisionSucTotal)],
@@ -56,7 +56,7 @@
       ['Comisión total aplicada', round(g.comisionTotal)],
       ['Total neto a rendir (referencia contable)', round(g.netoTotal)],
       [],
-      ['Bruto a depositar (efectivo físico, sin venta web)', round(g.brutoADepositar)],
+      ['Bruto a depositar (efectivo físico, sin venta web, ya neto de boletos cancelados)', round(g.brutoADepositar)],
       ['Disponible de caja (bruto a depositar − comisión sucursal)', round(g.disponibleCaja)],
       ['Colección medios de pago (GetNet+Tarjeta+Transferencia+Otros, neto de su comisión)', round(g.coleccionMediosPago)],
       ['Total disponible (caja neta + medios de pago netos)', round(g.totalDisponible)]

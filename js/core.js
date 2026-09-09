@@ -192,7 +192,11 @@
   // así que NO se descuenta del efectivo a depositar. Solo la comisión de sucursal reduce
   // ese monto. La comisión por medio de pago sigue existiendo como gasto (ver comisionPago,
   // comisionTotal) pero se liquida aparte, con lo recaudado por esos medios electrónicos.
-  function breakdownFor(entry, pct, config) {
+  // `web`: si la sucursal está marcada como Venta Web, el boleto cancelado sale de la
+  // recaudación web (no toca "Efectivo" — ese dinero nunca fue caja física). Si no es
+  // web, la devolución sale siempre del Efectivo de esa sucursal/usuario, sin importar
+  // el medio de pago original del boleto cancelado.
+  function breakdownFor(entry, pct, config, web) {
     const bruto = sumPM(entry);
     const devolucion = entry.devolucion || 0;
     const ventaNeta = bruto - devolucion;
@@ -200,7 +204,7 @@
     const comisionPago = PM_KEYS.reduce((a, k) => a + entry[k] * pmPctFor(config, k) / 100, 0);
     const comisionTotal = comisionSuc + comisionPago;
     const neto = ventaNeta - comisionTotal;
-    const brutoADepositar = entry.efectivo; // caja física, sin descuentos
+    const brutoADepositar = web ? entry.efectivo : (entry.efectivo - devolucion);
     const disponible = brutoADepositar - comisionSuc; // solo la comisión de sucursal afecta el efectivo a depositar
     return { bruto, devolucion, ventaNeta, comisionSuc, comisionPago, comisionTotal, neto, brutoADepositar, disponible };
   }
@@ -210,14 +214,16 @@
     const count = Object.values(state.sucursales[s]).reduce((a, u) => a + u.count, 0);
     const canceladas = sucCanceladas(state, s);
     const pct = pctFor(config, s);
-    const b = breakdownFor(Object.assign({ devolucion: sucDevolucion(state, s) }, pm), pct, config);
-    return Object.assign({ sucursal: s, pm, count, canceladas, pct }, b);
+    const web = isWeb(config, s);
+    const b = breakdownFor(Object.assign({ devolucion: sucDevolucion(state, s) }, pm), pct, config, web);
+    return Object.assign({ sucursal: s, pm, count, canceladas, pct, web }, b);
   }
 
   function userBreakdown(state, config, s, u) {
     const entry = state.sucursales[s][u];
     const pct = pctFor(config, s);
-    const b = breakdownFor(entry, pct, config);
+    const web = isWeb(config, s);
+    const b = breakdownFor(entry, pct, config, web);
     return Object.assign({ sucursal: s, usuario: u, entry, pct }, b);
   }
 
@@ -230,18 +236,23 @@
     let grandTotal = 0, grandCount = 0, grandDevolucion = 0, grandCanceladas = 0;
     let comisionSucTotal = 0, comisionSucTotalNonWeb = 0;
     let grandWeb = 0, webSucCount = 0;
+    let grandCajaNeta = 0; // suma del Efectivo ya neto de cancelaciones, solo sucursales no-web
 
     names.forEach(s => {
       const sb = sucBreakdown(state, config, s);
       grandDevolucion += sb.devolucion;
       grandCanceladas += sb.canceladas;
       comisionSucTotal += sb.comisionSuc;
-      const web = isWeb(config, s);
-      if (web) { grandWeb += sb.bruto; webSucCount++; }
-      else comisionSucTotalNonWeb += sb.comisionSuc;
+      if (sb.web) {
+        grandWeb += sb.ventaNeta; // la cancelación de una sucursal web sale de su propia recaudación
+        webSucCount++;
+      } else {
+        comisionSucTotalNonWeb += sb.comisionSuc;
+        grandCajaNeta += sb.brutoADepositar; // ya neto: la cancelación siempre sale del efectivo aquí
+      }
       PM_KEYS.forEach(k => {
         grand[k] += sb.pm[k];
-        if (!web) grandNonWeb[k] += sb.pm[k];
+        if (!sb.web) grandNonWeb[k] += sb.pm[k];
       });
       grandTotal += sb.bruto;
       grandCount += sb.count;
@@ -253,16 +264,18 @@
     const netoTotal = ventaNetaTotal - comisionTotal;
 
     // Bruto/disponible de caja: SOLO la comisión de sucursal toca el efectivo físico
-    // (sin venta web). La comisión por medio de pago es un gasto de la empresa frente
-    // al procesador — se liquida contra lo recaudado por esos medios, no contra la caja.
-    const brutoADepositar = grandNonWeb.efectivo;
+    // (sin venta web, ya neto de sus propias cancelaciones). La comisión por medio de
+    // pago es un gasto de la empresa frente al procesador — se liquida aparte, contra
+    // lo recaudado por esos medios, nunca contra la caja.
+    const brutoADepositar = grandCajaNeta;
     const disponibleCaja = brutoADepositar - comisionSucTotalNonWeb;
 
-    // Colección de medios de pago (todo lo no-efectivo, de todas las sucursales incluida
-    // venta web): acá sí se aplica su comisión, para saber cuánto llega neto del procesador.
+    // Colección de medios de pago: SOLO sucursales no-web (la venta web ya se contó
+    // completa, neta de cancelaciones, en "Venta Web" — incluirla de nuevo aquí sería
+    // duplicarla). Acá sí se aplica su comisión, para saber cuánto llega neto del procesador.
     const pmKeysNoCash = PM_KEYS.filter(k => k !== 'efectivo');
-    const coleccionMediosPago = pmKeysNoCash.reduce((a, k) => a + grand[k] - grand[k] * pmPctFor(config, k) / 100, 0);
-    const comisionMediosPagoNoCash = pmKeysNoCash.reduce((a, k) => a + grand[k] * pmPctFor(config, k) / 100, 0);
+    const coleccionMediosPago = pmKeysNoCash.reduce((a, k) => a + grandNonWeb[k] - grandNonWeb[k] * pmPctFor(config, k) / 100, 0);
+    const comisionMediosPagoNoCash = pmKeysNoCash.reduce((a, k) => a + grandNonWeb[k] * pmPctFor(config, k) / 100, 0);
 
     // Total disponible de la empresa = caja física neta de su comisión + medios de pago netos de la suya.
     const totalDisponible = disponibleCaja + coleccionMediosPago;
@@ -283,16 +296,20 @@
     const day = state.daily[dkey] || {};
     const list = sucList === '__all__' ? Object.keys(day) : sucList.filter(s => day[s]);
     const pm = emptyPM();
-    let devolucion = 0, comisionSuc = 0;
+    let devolucion = 0, devolucionEfectivo = 0, comisionSuc = 0;
     list.forEach(s => {
       const dayObj = day[s];
-      devolucion += dayObj.devolucion || 0;
-      comisionSuc += (sumPM(dayObj) - (dayObj.devolucion || 0)) * pctFor(config, s) / 100;
+      const dev = dayObj.devolucion || 0;
+      devolucion += dev;
+      // igual que a nivel de sucursal: si es web, la cancelación sale de su propia
+      // recaudación (no del efectivo); si no, siempre sale del efectivo.
+      if (!isWeb(config, s)) devolucionEfectivo += dev;
+      comisionSuc += (sumPM(dayObj) - dev) * pctFor(config, s) / 100;
       PM_KEYS.forEach(k => pm[k] += dayObj[k]);
     });
     const comisionPago = PM_KEYS.reduce((a, k) => a + pm[k] * pmPctFor(config, k) / 100, 0);
     const comisionTotal = comisionSuc + comisionPago;
-    const brutoADepositar = pm.efectivo;
+    const brutoADepositar = pm.efectivo - devolucionEfectivo;
     // Solo la comisión de sucursal descuenta el efectivo — la de medio de pago es gasto
     // de la empresa frente al procesador, no sale de la caja.
     const disponible = brutoADepositar - comisionSuc;

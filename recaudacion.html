@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control de Recaudación</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* ============================================================================
+   app.css — sistema de diseño del portal de recaudación.
+   Tokens primero (claro / oscuro), luego layout, luego componentes.
+   ========================================================================== */
+:root{
+  --bg:#eef1f4;
+  --surface:#ffffff;
+  --surface-2:#f5f7f9;
+  --ink:#1c2632;
+  --ink-soft:#55606c;
+  --ink-faint:#8792a0;
+  --line:#d8dee4;
+  --accent:#c96a2e;
+  --accent-soft:#f3ddc9;
+  --accent-ink:#7a3d17;
+  --good:#2f8f5f;
+  --good-soft:#dcf0e6;
+  --bad:#c1443a;
+  --bad-soft:#f6dfdc;
+  --p-efectivo:#c96a2e;
+  --p-getnet:#2f7d8f;
+  --p-tarjeta:#6a5fc1;
+  --p-transferencia:#a3812f;
+  --p-otros:#7a8591;
+  --web:#3d7a9e;
+  --web-soft:#dfeaf2;
+  --shadow: 0 1px 2px rgba(28,38,50,.06), 0 8px 24px -12px rgba(28,38,50,.18);
+  --shadow-lg: 0 2px 4px rgba(28,38,50,.08), 0 16px 40px -16px rgba(28,38,50,.24);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12181e; --surface:#1a222a; --surface-2:#202a33;
+    --ink:#e8ecef; --ink-soft:#a4afb8; --ink-faint:#717c86; --line:#2a343e;
+    --accent:#e08a4f; --accent-soft:#3a2c1f; --accent-ink:#f1c39a;
+    --good:#4fb886; --good-soft:#1c3226; --bad:#e0685c; --bad-soft:#3a2320;
+    --p-efectivo:#e08a4f; --p-getnet:#4fa3b6; --p-tarjeta:#8b81dd; --p-transferencia:#c7a24f; --p-otros:#8c96a1;
+    --web:#6fa8cc; --web-soft:#22303a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    --shadow-lg: 0 2px 4px rgba(0,0,0,.35), 0 20px 48px -16px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12181e; --surface:#1a222a; --surface-2:#202a33;
+  --ink:#e8ecef; --ink-soft:#a4afb8; --ink-faint:#717c86; --line:#2a343e;
+  --accent:#e08a4f; --accent-soft:#3a2c1f; --accent-ink:#f1c39a;
+  --good:#4fb886; --good-soft:#1c3226; --bad:#e0685c; --bad-soft:#3a2320;
+  --p-efectivo:#e08a4f; --p-getnet:#4fa3b6; --p-tarjeta:#8b81dd; --p-transferencia:#c7a24f; --p-otros:#8c96a1;
+  --web:#6fa8cc; --web-soft:#22303a;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  --shadow-lg: 0 2px 4px rgba(0,0,0,.35), 0 20px 48px -16px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box;}
+html{background:var(--bg);}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:'Public Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+  font-size:14px; line-height:1.5;
+}
+h1,h2,h3,.display{ font-family:'Barlow Condensed',system-ui,sans-serif; font-weight:700; letter-spacing:.01em; text-wrap:balance; }
+.mono,.num{ font-family:'JetBrains Mono',ui-monospace,Consolas,monospace; font-variant-numeric:tabular-nums; }
+.wrap{max-width:1220px;margin:0 auto;padding:28px 24px 64px;}
+a{color:var(--accent);}
+[hidden]{display:none!important;}
+
+/* ---- top bar ---- */
+.topbar{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;
+  padding-bottom:20px;margin-bottom:24px;border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-mark{
+  width:38px;height:38px;border-radius:10px;flex:none;
+  background:linear-gradient(155deg,var(--accent),var(--accent-ink));
+  display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);
+}
+.brand-mark svg{width:20px;height:20px;}
+.eyebrow{ font-size:11.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);margin:0 0 4px; }
+.topbar h1{font-size:32px;line-height:1;margin:0;color:var(--ink);}
+.topbar .sub{color:var(--ink-soft);font-size:13.5px;margin-top:6px;}
+.upload-controls{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--accent);color:#fff;border:none;border-radius:8px;
+  padding:10px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:var(--shadow);
+  transition:filter .12s, transform .12s;
+}
+.btn:hover{filter:brightness(1.06);}
+.btn:active{transform:translateY(1px);}
+.btn:focus-visible, button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+.btn.secondary{background:var(--surface-2);color:var(--ink);border:1px solid var(--line);box-shadow:none;}
+.btn.ghost{background:none;color:var(--accent);box-shadow:none;padding:8px 4px;}
+.btn.xlsx{background:var(--good);}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+#fileMeta{font-size:12px;color:var(--ink-faint);}
+#fileInput{display:none;}
+
+/* ---- dropzone ---- */
+.dropzone{
+  border:2px dashed var(--line);border-radius:14px;background:var(--surface);
+  padding:36px 24px;text-align:center;margin-bottom:28px;transition:border-color .15s,background .15s;
+}
+.dropzone.drag{border-color:var(--accent);background:var(--accent-soft);}
+.dropzone p{margin:4px 0;color:var(--ink-soft);}
+.dropzone strong{color:var(--ink);}
+
+/* ---- KPI hero: lo primero que el operador necesita ver ---- */
+.kpi-hero{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px;}
+@media (max-width:820px){.kpi-hero{grid-template-columns:1fr;}}
+.kpi-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:20px 22px;box-shadow:var(--shadow-lg);position:relative;overflow:hidden;
+}
+.kpi-card::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--kpi-accent,var(--accent));}
+.kpi-card.deposito{--kpi-accent:var(--accent);}
+.kpi-card.comision{--kpi-accent:var(--bad);}
+.kpi-card.disponible{--kpi-accent:var(--good);}
+.kpi-card .label{font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);}
+.kpi-card .val{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:28px;font-weight:700;margin-top:6px;color:var(--ink);}
+.kpi-card .meta{font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.45;}
+
+/* ---- stat strip: desglose por método de pago ---- */
+.summary-grid{ display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:28px; }
+@media (max-width:980px){.summary-grid{grid-template-columns:repeat(3,1fr);}}
+@media (max-width:560px){.summary-grid{grid-template-columns:1fr 1fr;}}
+.tile{ background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow); }
+.tile .label{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);}
+.tile .val{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:17px;font-weight:700;margin-top:4px;}
+.tile .meta{font-size:11.5px;color:var(--ink-soft);margin-top:5px;}
+.tile.web-tile{background:var(--web-soft);border-color:var(--web);}
+.tile.web-tile .label{color:var(--web);}
+.tile.bad-tile .val{color:var(--bad);}
+.pm-bar{height:6px;border-radius:99px;background:var(--surface-2);margin-top:8px;overflow:hidden;display:flex;}
+.pm-dot{width:8px;height:8px;border-radius:99px;display:inline-block;margin-right:6px;flex:none;}
+
+/* ---- section headers ---- */
+.section{margin-bottom:32px;}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:14px;flex-wrap:wrap;}
+.section-head h2{font-size:22px;margin:0;color:var(--ink);}
+.section-head .note{font-size:12.5px;color:var(--ink-faint);}
+
+/* ---- tabs ---- */
+.tabs{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid var(--line);margin-bottom:20px;flex-wrap:wrap;}
+.tabs .tab-list{display:flex;gap:22px;}
+.tab-btn{
+  font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;
+  background:none;border:none;color:var(--ink-faint);cursor:pointer;padding:9px 2px 11px;margin-bottom:-1px;border-bottom:2px solid transparent;
+}
+.tab-btn:hover{color:var(--ink-soft);}
+.tab-btn.active{color:var(--ink);border-bottom-color:var(--accent);}
+
+/* ---- sucursal cards ---- */
+.suc-card{ background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow); }
+.suc-card summary{ list-style:none;cursor:pointer;padding:14px 18px;display:flex;align-items:center;gap:16px; }
+.suc-card summary::-webkit-details-marker{display:none;}
+.suc-card .chev{width:9px;height:9px;border-right:2px solid var(--ink-faint);border-bottom:2px solid var(--ink-faint);transform:rotate(-45deg);transition:transform .15s;flex:none;}
+.suc-card[open] .chev{transform:rotate(45deg);}
+.suc-card .name{font-family:'Barlow Condensed';font-weight:600;font-size:18px;flex:1;min-width:140px;}
+.suc-card .name small{display:block;font-family:'Public Sans';font-weight:400;font-size:12px;color:var(--ink-faint);}
+.suc-card .mini-bar{width:160px;height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;display:flex;flex:none;}
+.suc-card .suc-total{font-family:'JetBrains Mono';font-weight:700;font-size:16px;min-width:130px;text-align:right;flex:none;}
+.suc-card .suc-total small{display:block;font-weight:400;font-size:11px;color:var(--ink-faint);font-family:'Public Sans';}
+.suc-body{padding:0 18px 16px;border-top:1px solid var(--line);}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{ text-align:right;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding:10px 8px 8px;border-bottom:1px solid var(--line); }
+th:first-child,td:first-child{text-align:left;}
+th small{display:block;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-faint);font-size:9.5px;margin-top:2px;}
+td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;}
+tr:last-child td{border-bottom:none;}
+tr.totalrow td{font-weight:700;border-top:1px solid var(--line);border-bottom:none;background:var(--surface-2);}
+tr.comisionrow td{color:var(--bad);font-style:italic;}
+tr.netorow td{font-weight:800;border-top:2px solid var(--line);border-bottom:none;}
+tr.netorow.disponible td{color:var(--good);}
+.table-scroll{overflow-x:auto;}
+.usr-name{font-weight:500;}
+.pill{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px;}
+.pill.good{background:var(--good-soft);color:var(--good);}
+.pill.bad{background:var(--bad-soft);color:var(--bad);}
+.pill.web{background:var(--web-soft);color:var(--web);}
+
+/* ---- tipo grid ---- */
+.tipo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.tipo-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);}
+.tipo-card h3{font-size:16px;margin:0 0 8px;font-weight:600;}
+.tipo-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;border-bottom:1px dashed var(--line);}
+.tipo-row:last-child{border-bottom:none;}
+.tipo-row .amt{font-family:'JetBrains Mono';font-weight:600;}
+
+/* ---- selector de sucursales (detalle diario) ---- */
+.suc-picker{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);margin-bottom:20px;}
+.suc-picker .picker-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+.suc-picker .picker-head h2{font-size:18px;margin:0;}
+.suc-picker .picker-actions{display:flex;gap:8px;}
+.suc-picker .picker-actions button{
+  font-size:11.5px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-soft);
+  border-radius:99px;padding:5px 12px;cursor:pointer;
+}
+.chip-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{
+  display:inline-flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:99px;padding:6px 12px 6px 8px;cursor:pointer;font-size:12.5px;user-select:none;transition:border-color .12s,background .12s;
+}
+.chip input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer;}
+.chip .swatch{width:9px;height:9px;border-radius:99px;flex:none;}
+.chip.checked{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);font-weight:600;}
+.chip .cnt{color:var(--ink-faint);font-family:'JetBrains Mono';font-size:11px;}
+.chip.checked .cnt{color:var(--accent-ink);}
+
+/* ---- comparación combinada ---- */
+.combo-card{
+  background:linear-gradient(155deg,var(--surface),var(--good-soft) 220%);
+  border:1px solid var(--good);border-radius:14px;padding:4px;box-shadow:var(--shadow-lg);margin-bottom:24px;
+}
+.combo-card > div{background:var(--surface);border-radius:11px;padding:18px 20px;}
+.combo-card h2{font-size:18px;margin:0 0 2px;color:var(--good);}
+.combo-card .note{font-size:12px;color:var(--ink-soft);margin-bottom:14px;}
+
+/* ---- chart ---- */
+.chart-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px 8px;box-shadow:var(--shadow);}
+select{
+  font-family:inherit;font-size:13px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface-2);color:var(--ink);
+}
+svg text{fill:var(--ink-faint);font-family:'JetBrains Mono',monospace;}
+.gridline{stroke:var(--line);stroke-width:1;}
+.axisline{stroke:var(--ink-faint);stroke-width:1;}
+
+/* ---- commission step ---- */
+.comm-columns{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;max-width:980px;}
+@media (max-width:760px){.comm-columns{grid-template-columns:1fr;}}
+.comm-actions{display:flex;gap:10px;margin-top:20px;max-width:980px;}
+.comm-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px 24px;box-shadow:var(--shadow);}
+.comm-card .pm-dot{width:8px;height:8px;border-radius:99px;display:inline-block;margin-right:7px;}
+.comm-card h2{font-size:22px;margin:0 0 4px;}
+.comm-card .lede{color:var(--ink-soft);font-size:13.5px;margin:0 0 18px;max-width:56ch;}
+.comm-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--line);}
+.comm-row:last-of-type{border-bottom:none;}
+.comm-row .cname{font-weight:500;}
+.comm-row .cbruto{font-family:'JetBrains Mono';font-size:12.5px;color:var(--ink-faint);}
+.comm-pct{display:flex;align-items:center;gap:6px;}
+.comm-pct input{width:68px;font-family:'JetBrains Mono';font-size:14px;text-align:right;padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);}
+.comm-pct span{color:var(--ink-faint);font-size:13px;}
+.comm-head-row{display:grid;grid-template-columns:1fr auto auto;gap:14px;padding-bottom:8px;margin-bottom:2px;}
+.comm-head-row span{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);}
+.comm-head-row span:last-child, .comm-head-row span:nth-child(2){text-align:right;}
+.comm-row--suc, .comm-head-row--suc{grid-template-columns:1fr auto auto auto;}
+.comm-head-row--suc span:last-child{text-align:center;}
+.comm-web{display:flex;justify-content:center;}
+.comm-web input{width:17px;height:17px;accent-color:var(--web);cursor:pointer;}
+
+/* ---- botón "editar" inline ---- */
+.btn-edit-comm{font-family:'Public Sans';font-size:11px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;}
+
+/* ---- footer ---- */
+.footer{border-top:1px solid var(--line);padding-top:18px;margin-top:12px;color:var(--ink-faint);font-size:12.5px;}
+.footer b{color:var(--ink-soft);}
+.warn-banner{background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent-ink);border-radius:10px;padding:10px 14px;font-size:12.5px;margin-bottom:20px;}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="5" width="18" height="12" rx="2.5" fill="#fff" fill-opacity=".92"/>
+          <circle cx="7.5" cy="17.5" r="1.6" fill="#fff"/>
+          <circle cx="16.5" cy="17.5" r="1.6" fill="#fff"/>
+          <rect x="5.2" y="7" width="13.6" height="5.4" rx="1" fill="var(--accent)"/>
+        </svg>
+      </div>
+      <div>
+        <p class="eyebrow">Control de Caja</p>
+        <h1>Recaudación por sucursal</h1>
+      </div>
+    </div>
+    <div class="upload-controls">
+      <button class="btn" id="btnUpload" type="button">↑ Subir informe CSV</button>
+      <span id="fileMeta">ningún archivo cargado</span>
+      <input type="file" id="fileInput" accept=".csv">
+    </div>
+  </div>
+  <p class="sub" id="subhead" style="margin:-14px 0 22px;color:var(--ink-soft);font-size:13.5px;">Sube un informe para comenzar — sin archivo cargado no hay datos que mostrar.</p>
+
+  <div class="dropzone" id="dropzone" hidden>
+    <p><strong>Suelta aquí el CSV</strong> del "Branch Collection Report"</p>
+    <p>o usa el botón "Subir informe CSV" arriba. Se lee en tu navegador, se detectan las sucursales del archivo y luego te pido la comisión de cada una antes de armar el reporte.</p>
+  </div>
+
+  <div id="warnBanner" class="warn-banner" hidden></div>
+
+  <div id="app"></div>
+
+  <div class="footer">
+    <p><b>Cómo funciona:</b> el archivo se procesa completo en tu navegador — ninguna fila viaja a un servidor. Sirve para cualquier reporte con la misma cabecera (Usuario, Nombre de Sucursal, Tipo, Monto Neto, Transacciones, Fecha Creado…): el cálculo se rehace automáticamente para el periodo que cargues, agrupando por sucursal, usuario y forma de pago (Efectivo, GetNet, Tarjeta, Transferencia), y separando ingresos de gastos según la columna Tipo. Filas de subtotal o encabezado repetidas dentro del propio CSV se descartan de forma automática. Antes de armar el reporte final se pide el % de comisión de cada sucursal — se guarda en este navegador para el próximo informe y siempre puedes reabrirla con "editar comisiones". El botón "Descargar Excel" exporta exactamente lo que ves en pantalla (resumen o detalle diario según la pestaña activa).</p>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   core.js — motor de datos: constantes, parsing del CSV, almacenamiento local
+   y TODAS las fórmulas de cálculo (comisiones, cancelaciones, depósito).
+   No toca el DOM — así lo puede usar tanto ui.js (pantalla) como export.js
+   (Excel) sin duplicar ni una sola fórmula.
+   ========================================================================== */
+(function (global) {
+  'use strict';
+
+  /* ---------------- constantes / alias de columnas ---------------- */
+  // Mismo concepto, distinto nombre de columna según la versión del reporte.
+  const COLS = {
+    usuario: ['Usuario'],
+    sucursal: ['Nombre de Sucursal', 'Sucursal'],
+    tipo: ['Tipo'],
+    monto: ['Monto Neto', 'Monto'],
+    pago: ['Transacciones', 'Forma de Pago', 'Medio de Pago'],
+    fecha: ['Fecha Creado', 'Fecha'],
+    devoluciones: ['Devoluciones']
+  };
+  const OPTIONAL_COLS = ['devoluciones']; // se puede calcular igual si el reporte no las trae
+
+  const PM_KEYS = ['efectivo', 'getnet', 'tarjeta', 'transferencia', 'otros'];
+  const PM_LABEL = { efectivo: 'Efectivo', getnet: 'GetNet', tarjeta: 'Tarjeta', transferencia: 'Transferencia', otros: 'Otros' };
+
+  const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+  const NUM = new Intl.NumberFormat('es-CL');
+  const DATE_RE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+\d{1,2}:\d{2})?$/;
+
+  function fmt(n) { return CLP.format(Math.round(n || 0)); }
+  function fmtNum(n) { return NUM.format(n || 0); }
+  function clean(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function emptyPM() { return { efectivo: 0, getnet: 0, tarjeta: 0, transferencia: 0, otros: 0 }; }
+  function sumPM(u) { return u.efectivo + u.getnet + u.tarjeta + u.transferencia + u.otros; }
+
+  function parseMoney(s) {
+    if (s == null) return null;
+    s = String(s).trim();
+    if (s === '' || s === '-') return null;
+    const neg = s.startsWith('-');
+    let t = s.replace(/\$/g, '').replace(/\s/g, '').replace(/-/g, '');
+    t = t.replace(/\./g, '').replace(/,/g, '.');
+    if (!/^\d+(\.\d+)?$/.test(t)) return null;
+    const v = parseFloat(t);
+    return isNaN(v) ? null : (neg ? -v : v);
+  }
+
+  function normPago(v) {
+    v = (v || '').toLowerCase();
+    if (v.includes('efectivo')) return 'efectivo';
+    if (v.includes('getnet')) return 'getnet';
+    if (v.includes('tarjeta')) return 'tarjeta';
+    if (v.includes('transfer')) return 'transferencia';
+    return 'otros';
+  }
+
+  function isGasto(tipo) { return /gasto/i.test(tipo || ''); }
+
+  /* ---------------- parsing del CSV ---------------- */
+  function buildColIndex(headerRow) {
+    const norm = headerRow.map(h => clean(h).replace(/^﻿/, ''));
+    const idx = {};
+    for (const key in COLS) {
+      idx[key] = -1;
+      for (const alias of COLS[key]) {
+        const i = norm.findIndex(h => h.toLowerCase() === alias.toLowerCase());
+        if (i !== -1) { idx[key] = i; break; }
+      }
+    }
+    return idx;
+  }
+
+  function missingColumns(idx) {
+    return Object.keys(idx).filter(k => idx[k] === -1 && !OPTIONAL_COLS.includes(k));
+  }
+
+  // rows: array de arrays (sin la fila de cabecera). idx: resultado de buildColIndex.
+  function aggregate(rows, idx) {
+    const sucursales = {}; // sucursal -> usuario -> {efectivo,getnet,tarjeta,transferencia,otros,count,devolucion,canceladas}
+    const tipos = {};      // sucursal -> tipo -> {monto,count}
+    const daily = {};      // fecha -> sucursal -> {efectivo,...,devolucion}
+    let validRows = 0;
+    const dates = [];
+
+    for (const row of rows) {
+      const usuario = clean(row[idx.usuario]);
+      const sucursal = clean(row[idx.sucursal]);
+      const tipo = clean(row[idx.tipo]);
+      const fecha = clean(row[idx.fecha]);
+      const montoRaw = row[idx.monto];
+      const pagoRaw = row[idx.pago];
+      const devolucionRaw = idx.devoluciones >= 0 ? row[idx.devoluciones] : null;
+
+      if (!usuario || !sucursal) continue;
+      if (/[($]/.test(usuario) || /[($]/.test(sucursal)) continue; // filas de subtotal/encabezado repetidas
+      const dm = DATE_RE.exec(fecha);
+      if (!dm) continue;
+      const monto = parseMoney(montoRaw);
+      if (monto === null) continue;
+      const devolucion = parseMoney(devolucionRaw) || 0; // valor no numérico (o columna ausente) = sin devolución
+
+      validRows++;
+      const dkey = `${dm[3]}-${String(dm[2]).padStart(2, '0')}-${String(dm[1]).padStart(2, '0')}`;
+      dates.push(dkey);
+
+      if (!sucursales[sucursal]) sucursales[sucursal] = {};
+      if (!sucursales[sucursal][usuario]) {
+        sucursales[sucursal][usuario] = { efectivo: 0, getnet: 0, tarjeta: 0, transferencia: 0, otros: 0, count: 0, devolucion: 0, canceladas: 0 };
+      }
+      const pkey = normPago(pagoRaw);
+      sucursales[sucursal][usuario][pkey] += monto;
+      sucursales[sucursal][usuario].count += 1;
+      if (devolucion > 0) {
+        sucursales[sucursal][usuario].devolucion += devolucion;
+        sucursales[sucursal][usuario].canceladas += 1;
+      }
+
+      if (!tipos[sucursal]) tipos[sucursal] = {};
+      if (!tipos[sucursal][tipo]) tipos[sucursal][tipo] = { monto: 0, count: 0 };
+      tipos[sucursal][tipo].monto += monto;
+      tipos[sucursal][tipo].count += 1;
+
+      if (!daily[dkey]) daily[dkey] = {};
+      if (!daily[dkey][sucursal]) daily[dkey][sucursal] = { efectivo: 0, getnet: 0, tarjeta: 0, transferencia: 0, otros: 0, devolucion: 0 };
+      daily[dkey][sucursal][pkey] += monto;
+      if (devolucion > 0) daily[dkey][sucursal].devolucion += devolucion;
+    }
+
+    dates.sort();
+    return {
+      sucursales, tipos, daily,
+      meta: {
+        totalRowsRaw: rows.length, validRows, skipped: rows.length - validRows,
+        dateMin: dates[0] || '—', dateMax: dates[dates.length - 1] || '—'
+      }
+    };
+  }
+
+  /* ---------------- almacenamiento local (comisiones / venta web) ---------------- */
+  const KEYS = {
+    comisiones: 'pasajebus_comisiones_v1',
+    comisionesPago: 'pasajebus_comisiones_pago_v1',
+    web: 'pasajebus_venta_web_v1'
+  };
+  function loadJSON(key) { try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (e) { return {}; } }
+  function saveJSON(key, obj) { try { localStorage.setItem(key, JSON.stringify(obj)); } catch (e) { /* modo privado, etc. */ } }
+
+  const Storage = {
+    loadCommissions: () => loadJSON(KEYS.comisiones),
+    saveCommissions: (m) => saveJSON(KEYS.comisiones, m),
+    loadPmCommissions: () => loadJSON(KEYS.comisionesPago),
+    savePmCommissions: (m) => saveJSON(KEYS.comisionesPago, m),
+    loadWebFlags: () => loadJSON(KEYS.web),
+    saveWebFlags: (m) => saveJSON(KEYS.web, m)
+  };
+
+  /* ============================================================================
+     Calc — todas las fórmulas de negocio en un solo lugar.
+     `config` = { commissions:{suc:pct}, pmCommissions:{pm:pct}, webFlags:{suc:bool} }
+     ========================================================================== */
+  function pctFor(config, s) { return (config.commissions || {})[s] || 0; }
+  function pmPctFor(config, k) { return (config.pmCommissions || {})[k] || 0; }
+  function isWeb(config, s) { return !!(config.webFlags || {})[s]; }
+
+  function sucNames(state) {
+    return Object.keys(state.sucursales).sort((a, b) => sucTotal(state, b) - sucTotal(state, a));
+  }
+  function sucTotal(state, s) {
+    return Object.values(state.sucursales[s]).reduce((a, u) => a + sumPM(u), 0);
+  }
+  function sucDevolucion(state, s) {
+    return Object.values(state.sucursales[s]).reduce((a, u) => a + (u.devolucion || 0), 0);
+  }
+  function sucCanceladas(state, s) {
+    return Object.values(state.sucursales[s]).reduce((a, u) => a + (u.canceladas || 0), 0);
+  }
+  function sucPM(state, s) {
+    const pm = emptyPM();
+    Object.values(state.sucursales[s]).forEach(u => PM_KEYS.forEach(k => pm[k] += u[k]));
+    return pm;
+  }
+
+  // Desglose de comisiones/depósito para una sucursal (o para un usuario individual,
+  // pasando `entry` = el objeto {efectivo,...,devolucion} de ese usuario en vez de sumar todos).
+  //
+  // Importante: la comisión por medio de pago (GetNet/Tarjeta/etc.) es un GASTO de la
+  // empresa frente al procesador/adquirente — nunca sale de la caja física de la sucursal,
+  // así que NO se descuenta del efectivo a depositar. Solo la comisión de sucursal reduce
+  // ese monto. La comisión por medio de pago sigue existiendo como gasto (ver comisionPago,
+  // comisionTotal) pero se liquida aparte, con lo recaudado por esos medios electrónicos.
+  function breakdownFor(entry, pct, config) {
+    const bruto = sumPM(entry);
+    const devolucion = entry.devolucion || 0;
+    const ventaNeta = bruto - devolucion;
+    const comisionSuc = ventaNeta * pct / 100;
+    const comisionPago = PM_KEYS.reduce((a, k) => a + entry[k] * pmPctFor(config, k) / 100, 0);
+    const comisionTotal = comisionSuc + comisionPago;
+    const neto = ventaNeta - comisionTotal;
+    const brutoADepositar = entry.efectivo; // caja física, sin descuentos
+    const disponible = brutoADepositar - comisionSuc; // solo la comisión de sucursal afecta el efectivo a depositar
+    return { bruto, devolucion, ventaNeta, comisionSuc, comisionPago, comisionTotal, neto, brutoADepositar, disponible };
+  }
+
+  function sucBreakdown(state, config, s) {
+    const pm = sucPM(state, s);
+    const count = Object.values(state.sucursales[s]).reduce((a, u) => a + u.count, 0);
+    const canceladas = sucCanceladas(state, s);
+    const pct = pctFor(config, s);
+    const b = breakdownFor(Object.assign({ devolucion: sucDevolucion(state, s) }, pm), pct, config);
+    return Object.assign({ sucursal: s, pm, count, canceladas, pct }, b);
+  }
+
+  function userBreakdown(state, config, s, u) {
+    const entry = state.sucursales[s][u];
+    const pct = pctFor(config, s);
+    const b = breakdownFor(entry, pct, config);
+    return Object.assign({ sucursal: s, usuario: u, entry, pct }, b);
+  }
+
+  // Totales generales. `grandNonWeb` excluye sucursales marcadas como Venta Web
+  // (para no mezclar venta online, registrada como Efectivo, con caja física real).
+  function grandBreakdown(state, config) {
+    const names = sucNames(state);
+    const grand = emptyPM();
+    const grandNonWeb = emptyPM();
+    let grandTotal = 0, grandCount = 0, grandDevolucion = 0, grandCanceladas = 0;
+    let comisionSucTotal = 0, comisionSucTotalNonWeb = 0;
+    let grandWeb = 0, webSucCount = 0;
+
+    names.forEach(s => {
+      const sb = sucBreakdown(state, config, s);
+      grandDevolucion += sb.devolucion;
+      grandCanceladas += sb.canceladas;
+      comisionSucTotal += sb.comisionSuc;
+      const web = isWeb(config, s);
+      if (web) { grandWeb += sb.bruto; webSucCount++; }
+      else comisionSucTotalNonWeb += sb.comisionSuc;
+      PM_KEYS.forEach(k => {
+        grand[k] += sb.pm[k];
+        if (!web) grandNonWeb[k] += sb.pm[k];
+      });
+      grandTotal += sb.bruto;
+      grandCount += sb.count;
+    });
+
+    const ventaNetaTotal = grandTotal - grandDevolucion;
+    const comisionPagoTotal = PM_KEYS.reduce((a, k) => a + grand[k] * pmPctFor(config, k) / 100, 0);
+    const comisionTotal = comisionSucTotal + comisionPagoTotal;
+    const netoTotal = ventaNetaTotal - comisionTotal;
+
+    // Bruto/disponible de caja: SOLO la comisión de sucursal toca el efectivo físico
+    // (sin venta web). La comisión por medio de pago es un gasto de la empresa frente
+    // al procesador — se liquida contra lo recaudado por esos medios, no contra la caja.
+    const brutoADepositar = grandNonWeb.efectivo;
+    const disponibleCaja = brutoADepositar - comisionSucTotalNonWeb;
+
+    // Colección de medios de pago (todo lo no-efectivo, de todas las sucursales incluida
+    // venta web): acá sí se aplica su comisión, para saber cuánto llega neto del procesador.
+    const pmKeysNoCash = PM_KEYS.filter(k => k !== 'efectivo');
+    const coleccionMediosPago = pmKeysNoCash.reduce((a, k) => a + grand[k] - grand[k] * pmPctFor(config, k) / 100, 0);
+    const comisionMediosPagoNoCash = pmKeysNoCash.reduce((a, k) => a + grand[k] * pmPctFor(config, k) / 100, 0);
+
+    // Total disponible de la empresa = caja física neta de su comisión + medios de pago netos de la suya.
+    const totalDisponible = disponibleCaja + coleccionMediosPago;
+
+    return {
+      names, grand, grandNonWeb, grandTotal, grandCount, grandDevolucion, grandCanceladas,
+      comisionSucTotal, comisionSucTotalNonWeb, comisionPagoTotal, comisionTotal, ventaNetaTotal, netoTotal,
+      brutoADepositar, disponibleCaja, coleccionMediosPago, comisionMediosPagoNoCash, totalDisponible,
+      grandWeb, webSucCount
+    };
+  }
+
+  function dayKeys(state) { return Object.keys(state.daily).sort(); }
+
+  // Desglose de un día para un conjunto de sucursales (usado por el filtro simple
+  // y por la comparación multi-sucursal). `sucList` = array de nombres, o '__all__'.
+  function dayDetail(state, config, dkey, sucList) {
+    const day = state.daily[dkey] || {};
+    const list = sucList === '__all__' ? Object.keys(day) : sucList.filter(s => day[s]);
+    const pm = emptyPM();
+    let devolucion = 0, comisionSuc = 0;
+    list.forEach(s => {
+      const dayObj = day[s];
+      devolucion += dayObj.devolucion || 0;
+      comisionSuc += (sumPM(dayObj) - (dayObj.devolucion || 0)) * pctFor(config, s) / 100;
+      PM_KEYS.forEach(k => pm[k] += dayObj[k]);
+    });
+    const comisionPago = PM_KEYS.reduce((a, k) => a + pm[k] * pmPctFor(config, k) / 100, 0);
+    const comisionTotal = comisionSuc + comisionPago;
+    const brutoADepositar = pm.efectivo;
+    // Solo la comisión de sucursal descuenta el efectivo — la de medio de pago es gasto
+    // de la empresa frente al procesador, no sale de la caja.
+    const disponible = brutoADepositar - comisionSuc;
+    return { pm, devolucion, comisionSuc, comisionPago, comisionTotal, brutoADepositar, disponible, total: sumPM(pm) };
+  }
+
+  /* ---------------- export ---------------- */
+  global.Core = {
+    COLS, OPTIONAL_COLS, PM_KEYS, PM_LABEL, DATE_RE,
+    fmt, fmtNum, clean, esc, emptyPM, sumPM, parseMoney, normPago, isGasto,
+    buildColIndex, missingColumns, aggregate,
+    Storage,
+    Calc: {
+      pctFor, pmPctFor, isWeb, sucNames, sucTotal, sucDevolucion, sucCanceladas, sucPM,
+      sucBreakdown, userBreakdown, grandBreakdown, dayKeys, dayDetail
+    }
+  };
+})(window);
+
+</script>
+<script>
+/* ============================================================================
+   charts.js — gráfico de barras SVG para la evolución diaria.
+   Sin librerías externas: dibuja barras simples o apiladas por sucursal
+   cuando hay más de una seleccionada, para comparar aporte + total combinado.
+   ========================================================================== */
+(function (global) {
+  'use strict';
+  const { fmt, sumPM } = Core;
+
+  // Paleta cualitativa para distinguir sucursales en el gráfico apilado.
+  const STACK_COLORS = ['#c96a2e', '#2f7d8f', '#6a5fc1', '#a3812f', '#3d7a9e', '#2f8f5f', '#c1443a', '#7a8591'];
+  function colorFor(i) { return STACK_COLORS[i % STACK_COLORS.length]; }
+
+  /**
+   * @param {string} hostId  id del contenedor donde inyectar el <svg>
+   * @param {string[]} dayKeys  fechas ordenadas (YYYY-MM-DD)
+   * @param {function} seriesFn  (dkey) => number[]  monto por serie ese día (1 valor si no hay comparación)
+   * @param {string[]} seriesNames  nombres de cada serie, para el título de la barra
+   */
+  function drawDailyChart(hostId, dayKeys, seriesFn, seriesNames) {
+    const host = document.getElementById(hostId);
+    if (!host) return;
+    const n = seriesNames.length;
+    const rows = dayKeys.map(d => seriesFn(d));
+    const totals = rows.map(r => r.reduce((a, b) => a + b, 0));
+    const max = Math.max(...totals, 1);
+
+    const W = 1080, H = n > 1 ? 260 : 240, padL = 64, padB = 26, padT = 10, padR = 10;
+    const legendH = n > 1 ? 24 : 0;
+    const plotH = H - padT - padB - legendH;
+    const plotW = W - padL - padR;
+    const bw = plotW / dayKeys.length;
+    const ticks = 4;
+
+    let svg = `<svg viewBox="0 0 ${W} ${H + legendH}" style="width:100%;height:auto;" role="img" aria-label="Recaudación diaria">`;
+
+    if (n > 1) {
+      let lx = padL;
+      svg += seriesNames.map((name, i) => {
+        const w = 14, gap = 8, textW = Math.min(name.length * 6.2 + 20, 220);
+        const item = `<rect x="${lx}" y="4" width="${w}" height="${w}" rx="3" fill="${colorFor(i)}"/><text x="${lx + w + 6}" y="${w - 2}" font-size="11">${Core.esc(name)}</text>`;
+        lx += w + 6 + textW + gap;
+        return item;
+      }).join('');
+    }
+
+    const topY = padT + legendH;
+    for (let i = 0; i <= ticks; i++) {
+      const y = topY + plotH - (i / ticks) * plotH;
+      const v = max * (i / ticks);
+      svg += `<line class="gridline" x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}"/>`;
+      svg += `<text x="${padL - 8}" y="${y + 4}" font-size="10" text-anchor="end">${v >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : Math.round(v / 1000) + 'K'}</text>`;
+    }
+
+    dayKeys.forEach((d, di) => {
+      const x = padL + di * bw + bw * 0.12;
+      const w = bw * 0.76;
+      let yCursor = topY + plotH;
+      rows[di].forEach((v, si) => {
+        const h = (v / max) * plotH;
+        yCursor -= h;
+        if (h > 0) {
+          svg += `<rect x="${x.toFixed(1)}" y="${yCursor.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="${n > 1 ? 1 : 2}" fill="${n > 1 ? colorFor(si) : 'var(--accent)'}"><title>${d} · ${Core.esc(seriesNames[si])}: ${fmt(v)}</title></rect>`;
+        }
+      });
+      const showLabel = dayKeys.length <= 15 || di % Math.ceil(dayKeys.length / 12) === 0;
+      if (showLabel) {
+        svg += `<text x="${(x + w * 0.5).toFixed(1)}" y="${H + legendH - 8}" font-size="9.5" text-anchor="middle">${d.slice(8)}/${d.slice(5, 7)}</text>`;
+      }
+    });
+
+    svg += `<line class="axisline" x1="${padL}" x2="${W - padR}" y1="${topY + plotH}" y2="${topY + plotH}"/>`;
+    svg += `</svg>`;
+    host.innerHTML = svg;
+  }
+
+  global.Charts = { drawDailyChart, colorFor };
+})(window);
+
+</script>
+<script>
+/* ============================================================================
+   export.js — exporta el resumen y el detalle diario a un libro de Excel
+   (.xlsx) usando SheetJS. Reutiliza únicamente fórmulas de Core.Calc: nunca
+   recalcula nada por su cuenta, así el Excel siempre cuadra con la pantalla.
+   ========================================================================== */
+(function (global) {
+  'use strict';
+  const { PM_KEYS, PM_LABEL, fmtNum } = Core;
+  const { sucNames, sucBreakdown, userBreakdown, grandBreakdown, dayKeys, dayDetail, isWeb, pctFor } = Core.Calc;
+
+  function round(n) { return Math.round((n || 0) * 100) / 100; }
+  function todayStamp() {
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function sheetSafeName(name) {
+    return name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Hoja';
+  }
+
+  function autoWidths(rows) {
+    const widths = [];
+    rows.forEach(r => r.forEach((cell, i) => {
+      const len = cell == null ? 0 : String(cell).length;
+      widths[i] = Math.max(widths[i] || 8, Math.min(len + 2, 42));
+    }));
+    return widths.map(w => ({ wch: w }));
+  }
+
+  function sheetFromRows(rows) {
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = autoWidths(rows);
+    return ws;
+  }
+
+  const PM_HEADERS = PM_KEYS.map(k => PM_LABEL[k]);
+
+  /* ---------------- libro: Resumen por sucursal ---------------- */
+  function buildResumenWorkbook(state, config) {
+    const wb = XLSX.utils.book_new();
+    const names = sucNames(state);
+    const g = grandBreakdown(state, config);
+
+    // Hoja 1: resumen general (los KPI que ve el operador arriba de la pantalla)
+    const rGeneral = [
+      ['Recaudación — Resumen general', state.meta.fileName || ''],
+      ['Periodo', `${state.meta.dateMin} a ${state.meta.dateMax}`],
+      ['Filas válidas', state.meta.validRows],
+      [],
+      ['Total recaudado (bruto, todas las sucursales)', round(g.grandTotal)],
+      ...PM_HEADERS.map((label, i) => [label + ' (sin venta web)', round(g.grandNonWeb[PM_KEYS[i]])]),
+      ['Venta Web', round(g.grandWeb)],
+      ['Boletos cancelados (monto)', round(g.grandDevolucion)],
+      ['Boletos cancelados (cantidad)', g.grandCanceladas],
+      ['Comisión sucursal (total, descuenta el efectivo)', round(g.comisionSucTotal)],
+      ['Comisión medio de pago (total, gasto de la empresa, NO descuenta el efectivo)', round(g.comisionPagoTotal)],
+      ['Comisión total aplicada', round(g.comisionTotal)],
+      ['Total neto a rendir (referencia contable)', round(g.netoTotal)],
+      [],
+      ['Bruto a depositar (efectivo físico, sin venta web)', round(g.brutoADepositar)],
+      ['Disponible de caja (bruto a depositar − comisión sucursal)', round(g.disponibleCaja)],
+      ['Colección medios de pago (GetNet+Tarjeta+Transferencia+Otros, neto de su comisión)', round(g.coleccionMediosPago)],
+      ['Total disponible (caja neta + medios de pago netos)', round(g.totalDisponible)]
+    ];
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(rGeneral), 'Resumen general');
+
+    // Hoja 2: detalle por sucursal y usuario
+    const header = ['Sucursal', 'Venta Web', 'Usuario', ...PM_HEADERS, 'Total bruto', 'Transacciones',
+      'Boletos cancelados', 'Monto cancelado', 'Com. sucursal (%)', 'Com. sucursal ($, descuenta efectivo)', 'Com. medio de pago ($, gasto empresa, no descuenta efectivo)',
+      'Bruto a depositar (Efectivo)', 'Disponible (Efectivo − com. sucursal)'];
+    const rows = [header];
+    names.forEach(s => {
+      const sb = sucBreakdown(state, config, s);
+      const web = isWeb(config, s) ? 'Sí' : '';
+      Object.keys(state.sucursales[s]).sort((a, b) => Core.sumPM(state.sucursales[s][b]) - Core.sumPM(state.sucursales[s][a])).forEach(u => {
+        const ub = userBreakdown(state, config, s, u);
+        rows.push([
+          s, web, u,
+          ...PM_KEYS.map(k => round(ub.entry[k])),
+          round(ub.bruto), ub.entry.count,
+          ub.entry.canceladas || 0, round(ub.devolucion),
+          sb.pct, round(ub.comisionSuc), round(ub.comisionPago),
+          round(ub.brutoADepositar), round(ub.disponible)
+        ]);
+      });
+      rows.push([
+        `${s} — TOTAL`, web, '',
+        ...PM_KEYS.map(k => round(sb.pm[k])),
+        round(sb.bruto), sb.count,
+        sb.canceladas, round(sb.devolucion),
+        sb.pct, round(sb.comisionSuc), round(sb.comisionPago),
+        round(sb.brutoADepositar), round(sb.disponible)
+      ]);
+    });
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(rows), 'Por sucursal');
+
+    // Hoja 3: ingresos y gastos por tipo
+    const rTipo = [['Sucursal', 'Tipo', 'Clasificación', 'Monto', 'Transacciones']];
+    names.forEach(s => {
+      const t = state.tipos[s] || {};
+      Object.keys(t).forEach(tn => {
+        rTipo.push([s, tn, Core.isGasto(tn) ? 'Gasto' : 'Ingreso', round(t[tn].monto), t[tn].count]);
+      });
+    });
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(rTipo), 'Ingresos y gastos');
+
+    return wb;
+  }
+
+  function downloadResumen(state, config) {
+    const wb = buildResumenWorkbook(state, config);
+    XLSX.writeFile(wb, `Recaudacion_Resumen_${todayStamp()}.xlsx`);
+  }
+
+  /* ---------------- libro: Detalle diario ---------------- */
+  function dailyRowsFor(state, config, sucList, days) {
+    const header = ['Fecha', ...PM_HEADERS, 'Total', 'Com. sucursal', 'Com. medio de pago', 'Bruto a depositar', 'Disponible'];
+    const rows = [header];
+    const totals = Core.emptyPM();
+    let tComSuc = 0, tComPago = 0, tBruto = 0, tDisp = 0, tTotal = 0;
+    days.forEach(d => {
+      const dd = dayDetail(state, config, d, sucList);
+      PM_KEYS.forEach(k => totals[k] += dd.pm[k]);
+      tComSuc += dd.comisionSuc; tComPago += dd.comisionPago; tBruto += dd.brutoADepositar; tDisp += dd.disponible; tTotal += dd.total;
+      const [y, mo, da] = d.split('-');
+      rows.push([`${da}/${mo}/${y}`, ...PM_KEYS.map(k => round(dd.pm[k])), round(dd.total),
+        round(dd.comisionSuc), round(dd.comisionPago), round(dd.brutoADepositar), round(dd.disponible)]);
+    });
+    rows.push(['TOTAL PERIODO', ...PM_KEYS.map(k => round(totals[k])), round(tTotal), round(tComSuc), round(tComPago), round(tBruto), round(tDisp)]);
+    return rows;
+  }
+
+  function buildDiarioWorkbook(state, config, selectedSucursales) {
+    const wb = XLSX.utils.book_new();
+    const days = dayKeys(state);
+    const list = (selectedSucursales && selectedSucursales.length) ? selectedSucursales : sucNames(state);
+
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(dailyRowsFor(state, config, list, days)), 'Combinado');
+    list.forEach(s => {
+      XLSX.utils.book_append_sheet(wb, sheetFromRows(dailyRowsFor(state, config, [s], days)), sheetSafeName(s));
+    });
+    return wb;
+  }
+
+  function downloadDiario(state, config, selectedSucursales) {
+    const wb = buildDiarioWorkbook(state, config, selectedSucursales);
+    XLSX.writeFile(wb, `Recaudacion_Diario_${todayStamp()}.xlsx`);
+  }
+
+  global.ExcelExport = { downloadResumen, downloadDiario };
+})(window);
+
+</script>
+<script>
+/* ============================================================================
+   ui.js — todo lo que toca el DOM: paso de comisiones, resumen por sucursal,
+   detalle diario (con selección múltiple de sucursales) y la carga del CSV.
+   Toda la matemática vive en core.js — acá solo se formatea y se dibuja.
+   ========================================================================== */
+(function () {
+  'use strict';
+  const { PM_KEYS, PM_LABEL, fmt, fmtNum, esc, clean, emptyPM, sumPM, isGasto } = Core;
+  const Calc = Core.Calc;
+  const Storage = Core.Storage;
+
+  let STATE = null;
+  let CONFIG = { commissions: {}, pmCommissions: {}, webFlags: {} };
+  let selectedDiario = null; // array de sucursales seleccionadas en "Detalle diario"
+
+  /* ================= paso 1: comisiones ================= */
+  function readWebFlagsFromForm() {
+    const map = {};
+    document.querySelectorAll('.comm-web-input').forEach(inp => { map[inp.dataset.suc] = inp.checked; });
+    return map;
+  }
+
+  function showCommissionStep(state) {
+    STATE = state;
+    const app = document.getElementById('app');
+    const saved = Storage.loadCommissions();
+    const savedPm = Storage.loadPmCommissions();
+    const savedWeb = Storage.loadWebFlags();
+    const names = Calc.sucNames(state);
+
+    const grandPM = emptyPM();
+    names.forEach(s => Object.values(state.sucursales[s]).forEach(u => PM_KEYS.forEach(k => grandPM[k] += u[k])));
+
+    let html = `<div class="comm-columns">
+      <div class="comm-card">
+        <h2>Comisión por sucursal</h2>
+        <p class="lede">% a descontar del bruto de cada sucursal, sobre el total recaudado. Marca "Venta web" en las sucursales cuyas ventas online quedan registradas como Efectivo (ej. Konnect), para verlas aparte y no confundirlas con caja física.</p>
+        <div class="comm-head-row comm-head-row--suc"><span>Sucursal</span><span>Bruto del periodo</span><span>Comisión</span><span>Venta web</span></div>`;
+    names.forEach(s => {
+      const pct = saved[s] != null ? saved[s] : 0;
+      const web = !!savedWeb[s];
+      html += `<div class="comm-row comm-row--suc">
+        <span class="cname">${esc(s)}</span>
+        <span class="cbruto">${fmt(Calc.sucTotal(state, s))}</span>
+        <span class="comm-pct"><input type="number" min="0" max="100" step="0.01" value="${pct}" data-suc="${esc(s)}" class="comm-input" aria-label="Comisión % para ${esc(s)}"><span>%</span></span>
+        <span class="comm-web"><input type="checkbox" ${web ? 'checked' : ''} data-suc="${esc(s)}" class="comm-web-input" aria-label="Venta web para ${esc(s)}"></span>
+      </div>`;
+    });
+    html += `</div>
+      <div class="comm-card">
+        <h2>Comisión por medio de pago</h2>
+        <p class="lede">% que cobra el procesador/adquirente por Getnet, Tarjeta, etc. — es un gasto de la empresa que se liquida contra lo recaudado por esos medios electrónicos. Es independiente de la comisión de sucursal y <b>nunca descuenta el efectivo a depositar</b> (el efectivo no tiene comisión de procesador).</p>
+        <div class="comm-head-row"><span>Medio de pago</span><span>Bruto del periodo</span><span>Comisión</span></div>`;
+    PM_KEYS.filter(k => k !== 'efectivo').forEach(k => {
+      const pct = savedPm[k] != null ? savedPm[k] : 0;
+      html += `<div class="comm-row">
+        <span class="cname"><span class="pm-dot" style="background:var(--p-${k})"></span>${PM_LABEL[k]}</span>
+        <span class="cbruto">${fmt(grandPM[k])}</span>
+        <span class="comm-pct"><input type="number" min="0" max="100" step="0.01" value="${pct}" data-pm="${k}" class="comm-pm-input" aria-label="Comisión % para ${PM_LABEL[k]}"><span>%</span></span>
+      </div>`;
+    });
+    html += `</div>
+    </div>
+    <div class="comm-actions">
+        <button class="btn" id="btnGenerar" type="button">Generar reporte →</button>
+        <button class="btn secondary" id="btnSinComision" type="button">Sin comisión (0% para todas)</button>
+    </div>`;
+    app.innerHTML = html;
+    document.getElementById('dropzone').hidden = true;
+
+    document.getElementById('btnGenerar').addEventListener('click', () => {
+      const map = {};
+      document.querySelectorAll('.comm-input').forEach(inp => {
+        const v = parseFloat(inp.value);
+        map[inp.dataset.suc] = isNaN(v) ? 0 : Math.min(Math.max(v, 0), 100);
+      });
+      const pmMap = {};
+      document.querySelectorAll('.comm-pm-input').forEach(inp => {
+        const v = parseFloat(inp.value);
+        pmMap[inp.dataset.pm] = isNaN(v) ? 0 : Math.min(Math.max(v, 0), 100);
+      });
+      const webMap = readWebFlagsFromForm();
+      Storage.saveCommissions(map); Storage.savePmCommissions(pmMap); Storage.saveWebFlags(webMap);
+      renderReport(state, { commissions: map, pmCommissions: pmMap, webFlags: webMap });
+    });
+    document.getElementById('btnSinComision').addEventListener('click', () => {
+      const map = {}; names.forEach(s => map[s] = 0);
+      const pmMap = {}; PM_KEYS.forEach(k => pmMap[k] = 0);
+      const webMap = readWebFlagsFromForm();
+      Storage.saveWebFlags(webMap);
+      renderReport(state, { commissions: map, pmCommissions: pmMap, webFlags: webMap });
+    });
+
+    document.getElementById('subhead').textContent =
+      `${state.meta.fileName || 'Informe cargado'} · ${fmtNum(state.meta.validRows)} filas válidas — definiendo comisiones…`;
+  }
+
+  /* ================= reporte principal ================= */
+  function renderReport(state, config) {
+    STATE = state; CONFIG = config;
+    selectedDiario = Calc.sucNames(state).slice(); // por defecto: todas seleccionadas
+    const app = document.getElementById('app');
+    const g = Calc.grandBreakdown(state, config);
+
+    app.innerHTML = `
+      ${kpiHeroHTML(state, g)}
+      ${statStripHTML(state, g)}
+      <div class="tabs" role="tablist">
+        <div class="tab-list">
+          <button class="tab-btn active" id="tabBtnResumen" type="button" role="tab" aria-selected="true">Por sucursal</button>
+          <button class="tab-btn" id="tabBtnDiario" type="button" role="tab" aria-selected="false">Detalle diario</button>
+        </div>
+        <button class="btn secondary" id="btnExportResumen" type="button">⬇ Descargar Excel</button>
+      </div>
+      <div id="panelResumen" class="tab-panel"></div>
+      <div id="panelDiario" class="tab-panel" hidden></div>
+    `;
+
+    renderResumenPanel(document.getElementById('panelResumen'), state, config);
+    renderDiarioPanel(document.getElementById('panelDiario'), state, config);
+
+    document.getElementById('btnEditComm').addEventListener('click', () => showCommissionStep(state));
+    document.getElementById('btnExportResumen').addEventListener('click', () => ExcelExport.downloadResumen(state, config));
+
+    const tabResumen = document.getElementById('tabBtnResumen');
+    const tabDiario = document.getElementById('tabBtnDiario');
+    const panelResumen = document.getElementById('panelResumen');
+    const panelDiario = document.getElementById('panelDiario');
+    const exportBtn = document.getElementById('btnExportResumen');
+    tabResumen.addEventListener('click', () => {
+      tabResumen.classList.add('active'); tabResumen.setAttribute('aria-selected', 'true');
+      tabDiario.classList.remove('active'); tabDiario.setAttribute('aria-selected', 'false');
+      panelResumen.hidden = false; panelDiario.hidden = true;
+      exportBtn.onclick = () => ExcelExport.downloadResumen(state, config);
+    });
+    tabDiario.addEventListener('click', () => {
+      tabDiario.classList.add('active'); tabDiario.setAttribute('aria-selected', 'true');
+      tabResumen.classList.remove('active'); tabResumen.setAttribute('aria-selected', 'false');
+      panelDiario.hidden = false; panelResumen.hidden = true;
+      exportBtn.onclick = () => ExcelExport.downloadDiario(state, config, selectedDiario);
+    });
+
+    document.getElementById('subhead').textContent =
+      `${state.meta.fileName || 'Informe cargado'} · ${fmtNum(state.meta.validRows)} filas válidas` +
+      (state.meta.skipped ? ` · ${fmtNum(state.meta.skipped)} filas de subtotal/encabezado descartadas` : '');
+
+    const warn = document.getElementById('warnBanner');
+    if (state.meta.skipped > 0) {
+      warn.hidden = false;
+      warn.textContent = `Se ignoraron ${fmtNum(state.meta.skipped)} filas del CSV que no correspondían a movimientos válidos (subtotales, encabezados repetidos o filas sin fecha/monto).`;
+    } else {
+      warn.hidden = true;
+    }
+  }
+
+  function kpiHeroHTML(state, g) {
+    return `<div class="kpi-hero">
+      <div class="kpi-card deposito">
+        <div class="label">Bruto a depositar</div>
+        <div class="val">${fmt(g.brutoADepositar)}</div>
+        <div class="meta">Efectivo físico de caja (sin venta web). Disponible de caja tras su comisión de sucursal: <b>${fmt(g.disponibleCaja)}</b>.</div>
+      </div>
+      <div class="kpi-card comision">
+        <div class="label">Comisión total aplicada</div>
+        <div class="val">${fmt(g.comisionTotal)}</div>
+        <div class="meta">${g.comisionTotal > 0 ? `Sucursal ${fmt(g.comisionSucTotal)} (descuenta la caja) + medio de pago ${fmt(g.comisionPagoTotal)} (gasto de la empresa frente al procesador, no toca el efectivo).` : 'Sin comisión configurada.'} <button class="btn-edit-comm" id="btnEditComm" type="button">editar comisiones</button></div>
+      </div>
+      <div class="kpi-card disponible">
+        <div class="label">Total disponible</div>
+        <div class="val">${fmt(g.totalDisponible)}</div>
+        <div class="meta">Caja neta de su comisión (${fmt(g.disponibleCaja)}) + medios de pago recaudados netos de la suya (${fmt(g.coleccionMediosPago)}).</div>
+      </div>
+    </div>`;
+  }
+
+  function statStripHTML(state, g) {
+    const pmMeta = PM_KEYS.map(k => ({ key: k, label: PM_LABEL[k], val: g.grandNonWeb[k] }));
+    let html = `<div class="summary-grid">
+      <div class="tile"><div class="label">Total recaudado (bruto)</div>
+        <div class="val">${fmt(g.grandTotal)}</div>
+        <div class="meta">${fmtNum(g.grandCount)} transacciones · ${state.meta.dateMin} a ${state.meta.dateMax}</div>
+        <div class="pm-bar">${pmMeta.map(p => `<span style="flex:${Math.max(p.val, 1)};background:var(--p-${p.key})"></span>`).join('')}</div>
+      </div>`;
+    pmMeta.forEach(p => {
+      const pct = g.grandTotal ? (p.val / g.grandTotal * 100) : 0;
+      const commPct = Calc.pmPctFor(CONFIG, p.key);
+      html += `<div class="tile"><div class="label"><span class="pm-dot" style="background:var(--p-${p.key})"></span>${p.label}</div>
+        <div class="val">${fmt(p.val)}</div><div class="meta">${pct.toFixed(1)}% del total${commPct ? ` · comisión ${commPct}%` : ''}</div></div>`;
+    });
+    if (g.webSucCount > 0) {
+      const webPct = g.grandTotal ? (g.grandWeb / g.grandTotal * 100) : 0;
+      html += `<div class="tile web-tile"><div class="label"><span class="pm-dot" style="background:var(--web)"></span>Venta Web</div>
+        <div class="val">${fmt(g.grandWeb)}</div><div class="meta">${webPct.toFixed(1)}% del total · ${g.webSucCount} sucursal${g.webSucCount !== 1 ? 'es' : ''} · no cuenta en Efectivo ni los demás medios</div></div>`;
+    }
+    html += `<div class="tile bad-tile"><div class="label">Boletos cancelados</div>
+      <div class="val">${fmt(g.grandDevolucion)}</div>
+      <div class="meta">${g.grandCanceladas > 0 ? fmtNum(g.grandCanceladas) + ' boleto' + (g.grandCanceladas !== 1 ? 's' : '') + ' con devolución' : 'Sin cancelaciones'}</div></div>
+    <div class="tile"><div class="label">Colección medios de pago</div>
+      <div class="val">${fmt(g.coleccionMediosPago)}</div>
+      <div class="meta">GetNet + Tarjeta + Transferencia + Otros, netos de su comisión (${fmt(g.comisionMediosPagoNoCash)})</div></div>
+    <div class="tile"><div class="label">Neto a rendir (todas)</div>
+      <div class="val">${fmt(g.netoTotal)}</div>
+      <div class="meta">Ventas − cancelados − comisiones, incluye venta web</div></div>
+    </div>`;
+    return html;
+  }
+
+  /* ================= panel: por sucursal ================= */
+  function pmHeadCell(k) { return `${PM_LABEL[k]}${Calc.pmPctFor(CONFIG, k) ? `<small>com. ${Calc.pmPctFor(CONFIG, k)}%</small>` : ''}`; }
+
+  function renderResumenPanel(container, state, config) {
+    const names = Calc.sucNames(state);
+    let html = `<div class="section"><div class="section-head"><h2>Por sucursal</h2><span class="note">Click para ver el detalle por usuario</span></div>`;
+
+    names.forEach((s, i) => {
+      const sb = Calc.sucBreakdown(state, config, s);
+      const uNames = Object.keys(state.sucursales[s]).sort((a, b) => sumPM(state.sucursales[s][b]) - sumPM(state.sucursales[s][a]));
+      const web = Calc.isWeb(config, s);
+      const hasDeduccion = sb.devolucion > 0 || sb.comisionSuc > 0;
+
+      html += `<details class="suc-card" ${i < 2 ? 'open' : ''}>
+        <summary>
+          <span class="chev"></span>
+          <span class="name">${esc(s)}${web ? ' <span class="pill web">Venta Web</span>' : ''}<small>${uNames.length} usuario${uNames.length !== 1 ? 's' : ''} · ${fmtNum(sb.count)} transacciones${sb.canceladas ? ' · ' + fmtNum(sb.canceladas) + ' cancelada' + (sb.canceladas !== 1 ? 's' : '') : ''}${sb.pct ? ' · comisión sucursal ' + sb.pct + '%' : ''}</small></span>
+          <span class="mini-bar">${PM_KEYS.map(k => `<span style="flex:${Math.max(sb.pm[k], 1)};background:var(--p-${k})"></span>`).join('')}</span>
+          <span class="suc-total">${fmt(hasDeduccion ? sb.disponible : sb.bruto)}${hasDeduccion ? `<small>bruto ${fmt(sb.bruto)}</small>` : ''}</span>
+        </summary>
+        <div class="suc-body"><div class="table-scroll"><table>
+          <thead><tr><th>Usuario</th><th>${pmHeadCell('efectivo')}</th><th>${pmHeadCell('getnet')}</th><th>${pmHeadCell('tarjeta')}</th><th>${pmHeadCell('transferencia')}</th><th>${pmHeadCell('otros')}</th><th>Total bruto</th><th>Transacciones</th><th>Cancelados</th><th>Com. sucursal${sb.pct ? ` (${sb.pct}%)` : ''}</th><th>Com. medio de pago<small>gasto empresa</small></th><th>Disponible</th></tr></thead>
+          <tbody>`;
+      uNames.forEach(u => {
+        const ub = Calc.userBreakdown(state, config, s, u);
+        const v = ub.entry;
+        html += `<tr><td class="usr-name">${esc(u)}</td>
+          <td class="num">${v.efectivo ? fmt(v.efectivo) : '—'}</td>
+          <td class="num">${v.getnet ? fmt(v.getnet) : '—'}</td>
+          <td class="num">${v.tarjeta ? fmt(v.tarjeta) : '—'}</td>
+          <td class="num">${v.transferencia ? fmt(v.transferencia) : '—'}</td>
+          <td class="num">${v.otros ? fmt(v.otros) : '—'}</td>
+          <td class="num">${fmt(ub.bruto)}</td>
+          <td class="num">${fmtNum(v.count)}</td>
+          <td class="num" style="${v.canceladas ? 'color:var(--bad)' : ''}">${v.canceladas ? `−${fmt(v.devolucion)} (${v.canceladas})` : '—'}</td>
+          <td class="num" style="${ub.comisionSuc ? 'color:var(--bad)' : ''}">${ub.comisionSuc ? `−${fmt(ub.comisionSuc)}` : '—'}</td>
+          <td class="num" style="${ub.comisionPago ? 'color:var(--bad)' : ''}">${ub.comisionPago ? `−${fmt(ub.comisionPago)}` : '—'}</td>
+          <td class="num"><b>${fmt(ub.disponible)}</b></td></tr>`;
+      });
+      html += `<tr class="totalrow"><td>Total sucursal (bruto)</td>
+        <td class="num">${fmt(sb.pm.efectivo)}</td><td class="num">${fmt(sb.pm.getnet)}</td>
+        <td class="num">${fmt(sb.pm.tarjeta)}</td><td class="num">${fmt(sb.pm.transferencia)}</td>
+        <td class="num">${fmt(sb.pm.otros)}</td><td class="num">${fmt(sb.bruto)}</td>
+        <td class="num">${fmtNum(sb.count)}</td>
+        <td class="num">${sb.canceladas ? `−${fmt(sb.devolucion)}` : '—'}</td>
+        <td class="num">${sb.comisionSuc ? `−${fmt(sb.comisionSuc)}` : '—'}</td>
+        <td class="num">${sb.comisionPago ? `−${fmt(sb.comisionPago)}` : '—'}</td>
+        <td class="num"><b>${fmt(sb.disponible)}</b></td></tr>`;
+      if (sb.devolucion > 0) html += `<tr class="comisionrow"><td colspan="11">Boletos cancelados (${fmtNum(sb.canceladas)})</td><td class="num">−${fmt(sb.devolucion)}</td></tr>`;
+      html += `<tr class="netorow"><td colspan="11">Bruto a depositar (solo Efectivo)</td><td class="num">${fmt(sb.brutoADepositar)}</td></tr>`;
+      if (sb.comisionSuc > 0) html += `<tr class="comisionrow"><td colspan="11">Comisión sucursal (${sb.pct}% sobre venta neta de cancelaciones) — sí descuenta el efectivo</td><td class="num">−${fmt(sb.comisionSuc)}</td></tr>`;
+      html += `<tr class="netorow disponible"><td colspan="11">Disponible de esta sucursal (efectivo − comisión sucursal)</td><td class="num">${fmt(sb.disponible)}</td></tr>`;
+      if (sb.comisionPago > 0) html += `<tr class="comisionrow"><td colspan="11">Comisión por medio de pago — gasto de la empresa frente al procesador, NO descuenta este efectivo</td><td class="num">−${fmt(sb.comisionPago)}</td></tr>`;
+      html += `<tr class="netorow"><td colspan="11">Neto a rendir (venta neta − ambas comisiones, referencia contable)</td><td class="num">${fmt(sb.neto)}</td></tr>`;
+      html += `</tbody></table></div></div></details>`;
+    });
+    html += `</div>`;
+
+    html += `<div class="section"><div class="section-head"><h2>Ingresos y gastos por tipo</h2><span class="note">Según la columna "Tipo" de cada movimiento</span></div><div class="tipo-grid">`;
+    names.forEach(s => {
+      const t = state.tipos[s] || {};
+      const tNames = Object.keys(t).sort((a, b) => t[b].monto - t[a].monto);
+      let ingreso = 0, gasto = 0;
+      tNames.forEach(tn => { if (isGasto(tn)) gasto += t[tn].monto; else ingreso += t[tn].monto; });
+      html += `<div class="tipo-card"><h3>${esc(s)}</h3>`;
+      tNames.forEach(tn => {
+        const gastoTn = isGasto(tn);
+        html += `<div class="tipo-row"><span><span class="pill ${gastoTn ? 'bad' : 'good'}">${gastoTn ? 'Gasto' : 'Ingreso'}</span> ${esc(tn)}</span><span class="amt" style="color:${gastoTn ? 'var(--bad)' : 'var(--ink)'}">${fmt(t[tn].monto)}</span></div>`;
+      });
+      if (gasto > 0) html += `<div class="tipo-row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:8px;"><span><b>Neto</b></span><span class="amt"><b>${fmt(ingreso - gasto)}</b></span></div>`;
+      html += `</div>`;
+    });
+    html += `</div></div>`;
+
+    container.innerHTML = html;
+  }
+
+  /* ================= panel: detalle diario ================= */
+  function dailyTableHTML(state, config, sucList, dayKeys, idPrefix) {
+    let rowsHtml = '';
+    const grand = emptyPM();
+    let gComSuc = 0, gComPago = 0, gBruto = 0, gDisp = 0, gTotal = 0;
+    dayKeys.forEach(d => {
+      const dd = Calc.dayDetail(state, config, d, sucList);
+      PM_KEYS.forEach(k => grand[k] += dd.pm[k]);
+      gComSuc += dd.comisionSuc; gComPago += dd.comisionPago; gBruto += dd.brutoADepositar; gDisp += dd.disponible; gTotal += dd.total;
+      const [y, mo, da] = d.split('-');
+      rowsHtml += `<tr><td>${da}/${mo}/${y}</td>
+        <td class="num">${dd.pm.efectivo ? fmt(dd.pm.efectivo) : '—'}</td>
+        <td class="num">${dd.pm.getnet ? fmt(dd.pm.getnet) : '—'}</td>
+        <td class="num">${dd.pm.tarjeta ? fmt(dd.pm.tarjeta) : '—'}</td>
+        <td class="num">${dd.pm.transferencia ? fmt(dd.pm.transferencia) : '—'}</td>
+        <td class="num">${dd.pm.otros ? fmt(dd.pm.otros) : '—'}</td>
+        <td class="num">${fmt(dd.total)}</td>
+        <td class="num" style="${dd.comisionSuc ? 'color:var(--bad)' : ''}">${dd.comisionSuc ? `−${fmt(dd.comisionSuc)}` : '—'}</td>
+        <td class="num" style="${dd.comisionPago ? 'color:var(--bad)' : ''}">${dd.comisionPago ? `−${fmt(dd.comisionPago)}` : '—'}</td>
+        <td class="num"><b>${fmt(dd.disponible)}</b></td></tr>`;
+    });
+    rowsHtml += `<tr class="totalrow"><td>Total periodo</td>
+      <td class="num">${fmt(grand.efectivo)}</td><td class="num">${fmt(grand.getnet)}</td>
+      <td class="num">${fmt(grand.tarjeta)}</td><td class="num">${fmt(grand.transferencia)}</td>
+      <td class="num">${fmt(grand.otros)}</td><td class="num">${fmt(gTotal)}</td>
+      <td class="num">${gComSuc ? `−${fmt(gComSuc)}` : '—'}</td>
+      <td class="num">${gComPago ? `−${fmt(gComPago)}` : '—'}</td>
+      <td class="num"><b>${fmt(gDisp)}</b></td></tr>`;
+    return `<div class="table-scroll"><table>
+      <thead><tr><th>Fecha</th><th>Efectivo</th><th>GetNet</th><th>Tarjeta</th><th>Transferencia</th><th>Otros</th><th>Total</th><th>Com. sucursal</th><th>Com. medio de pago<small>gasto empresa</small></th><th>Disponible (Efectivo − com. sucursal)</th></tr></thead>
+      <tbody id="${idPrefix}">${rowsHtml}</tbody>
+    </table></div>`;
+  }
+
+  function renderDiarioPanel(container, state, config) {
+    const names = Calc.sucNames(state);
+    const dayKeys = Calc.dayKeys(state);
+
+    let html = `<div class="suc-picker">
+      <div class="picker-head">
+        <h2>Sucursales a comparar</h2>
+        <div class="picker-actions">
+          <button type="button" id="btnPickAll">Seleccionar todas</button>
+          <button type="button" id="btnPickNone">Ninguna</button>
+        </div>
+      </div>
+      <p class="note" style="margin:0 0 12px;color:var(--ink-faint);font-size:12.5px;">Útil cuando un mismo terminal está dividido en varios puntos de venta lógicos: selecciona dos o más para ver el detalle de cada uno y el total combinado.</p>
+      <div class="chip-grid">
+        ${names.map((s, i) => `<label class="chip checked" data-suc="${esc(s)}">
+          <input type="checkbox" checked class="suc-chip-input" data-suc="${esc(s)}">
+          <span class="swatch" style="background:${Charts.colorFor(i)}"></span>
+          ${esc(s)} <span class="cnt">${fmtNum(Calc.sucTotal(state, s))}</span>
+        </label>`).join('')}
+      </div>
+    </div>
+
+    <div class="section"><div class="section-head"><h2>Evolución diaria</h2><span class="note">Cada color es una sucursal seleccionada; la altura combinada es el total del día</span></div>
+      <div class="chart-card"><div id="chartHost"></div></div>
+    </div>
+
+    <div id="diarioSections"></div>`;
+
+    container.innerHTML = html;
+
+    function redraw() {
+      const sel = names.filter((s, i) => document.querySelector(`.suc-chip-input[data-suc="${CSS.escape(s)}"]`)?.checked);
+      selectedDiario = sel;
+      document.querySelectorAll('.chip').forEach(chip => {
+        const s = chip.dataset.suc;
+        chip.classList.toggle('checked', sel.includes(s));
+      });
+
+      Charts.drawDailyChart('chartHost', dayKeys, (d) => sel.map(s => sumPM(state.daily[d]?.[s] || emptyPM())), sel);
+
+      const sectionsEl = document.getElementById('diarioSections');
+      if (sel.length === 0) {
+        sectionsEl.innerHTML = `<p style="color:var(--ink-faint);">Selecciona al menos una sucursal para ver el detalle diario.</p>`;
+        return;
+      }
+      let sHtml = '';
+      if (sel.length > 1) {
+        sHtml += `<div class="combo-card"><div>
+          <h2>Total combinado — ${sel.length} sucursales</h2>
+          <p class="note">Suma día a día de: ${sel.map(esc).join(', ')}</p>
+          ${dailyTableHTML(state, config, sel, dayKeys, 'combinadoBody')}
+        </div></div>`;
+      }
+      sHtml += `<div class="section-head" style="margin-top:4px;"><h2 style="font-size:18px;">Detalle por sucursal</h2></div>`;
+      sel.slice().sort((a, b) => Calc.sucTotal(state, b) - Calc.sucTotal(state, a)).forEach((s, i) => {
+        sHtml += `<details class="suc-card" ${i === 0 ? 'open' : ''}>
+          <summary><span class="chev"></span><span class="name">${esc(s)}</span></summary>
+          <div class="suc-body">${dailyTableHTML(state, config, [s], dayKeys, 'body_' + i)}</div>
+        </details>`;
+      });
+      sectionsEl.innerHTML = sHtml;
+    }
+
+    document.querySelectorAll('.suc-chip-input').forEach(inp => inp.addEventListener('change', redraw));
+    document.getElementById('btnPickAll').addEventListener('click', () => {
+      document.querySelectorAll('.suc-chip-input').forEach(inp => inp.checked = true);
+      redraw();
+    });
+    document.getElementById('btnPickNone').addEventListener('click', () => {
+      document.querySelectorAll('.suc-chip-input').forEach(inp => inp.checked = false);
+      redraw();
+    });
+
+    redraw();
+  }
+
+  /* ================= carga de archivo ================= */
+  function processCSVText(text, fileName) {
+    const parsed = Papa.parse(text, { skipEmptyLines: false });
+    const rows = parsed.data;
+    if (!rows.length) { alert('El archivo está vacío.'); return; }
+    const header = rows[0];
+    const idx = Core.buildColIndex(header);
+    const missing = Core.missingColumns(idx);
+    if (missing.length) {
+      alert('No se encontraron estas columnas esperadas en la cabecera: ' + missing.join(', ') + '\n\nRevisa que el CSV tenga las mismas columnas que el "Branch Collection Report".');
+      return;
+    }
+    const dataRows = rows.slice(1).filter(r => r.length > 1);
+    const agg = Core.aggregate(dataRows, idx);
+    agg.meta.fileName = fileName;
+    showCommissionStep(agg);
+    document.getElementById('dropzone').hidden = true;
+    document.getElementById('fileMeta').textContent = fileName;
+  }
+
+  function readFile(file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const buf = e.target.result;
+      const bytes = new Uint8Array(buf);
+      const hasBOM = bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF;
+      let text;
+      try {
+        text = new TextDecoder(hasBOM ? 'utf-8' : 'utf-8', { fatal: true }).decode(buf);
+      } catch (err) {
+        text = new TextDecoder('windows-1252').decode(buf);
+      }
+      processCSVText(text, file.name);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function boot() {
+    const fileInput = document.getElementById('fileInput');
+    const btnUpload = document.getElementById('btnUpload');
+    const dropzone = document.getElementById('dropzone');
+    btnUpload.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) readFile(e.target.files[0]); });
+
+    document.addEventListener('dragover', e => { e.preventDefault(); dropzone.hidden = false; dropzone.classList.add('drag'); });
+    document.addEventListener('dragleave', e => { if (e.target === dropzone) dropzone.classList.remove('drag'); });
+    document.addEventListener('drop', e => {
+      e.preventDefault(); dropzone.classList.remove('drag');
+      const f = e.dataTransfer.files[0];
+      if (f) readFile(f);
+    });
+
+    dropzone.hidden = false; // estado inicial: vacío, esperando un archivo real
+  }
+
+  document.addEventListener('DOMContentLoaded', boot);
+})();
+
+</script>
+</body>
+</html>

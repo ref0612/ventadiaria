@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control de Recaudación</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="5" width="18" height="12" rx="2.5" fill="#fff" fill-opacity=".92"/>
+          <circle cx="7.5" cy="17.5" r="1.6" fill="#fff"/>
+          <circle cx="16.5" cy="17.5" r="1.6" fill="#fff"/>
+          <rect x="5.2" y="7" width="13.6" height="5.4" rx="1" fill="var(--accent)"/>
+        </svg>
+      </div>
+      <div>
+        <p class="eyebrow">Control de Caja</p>
+        <h1>Recaudación por sucursal</h1>
+      </div>
+    </div>
+    <div class="upload-controls">
+      <button class="btn" id="btnUpload" type="button">↑ Subir informe CSV</button>
+      <span id="fileMeta">ningún archivo cargado</span>
+      <input type="file" id="fileInput" accept=".csv">
+    </div>
+  </div>
+  <p class="sub" id="subhead" style="margin:-14px 0 22px;color:var(--ink-soft);font-size:13.5px;">Sube un informe para comenzar — sin archivo cargado no hay datos que mostrar.</p>
+
+  <div class="dropzone" id="dropzone" hidden>
+    <p><strong>Suelta aquí el CSV</strong> del "Branch Collection Report"</p>
+    <p>o usa el botón "Subir informe CSV" arriba. Se lee en tu navegador, se detectan las sucursales del archivo y luego te pido la comisión de cada una antes de armar el reporte.</p>
+  </div>
+
+  <div id="warnBanner" class="warn-banner" hidden></div>
+
+  <div id="app"></div>
+
+  <div class="footer">
+    <p><b>Cómo funciona:</b> el archivo se procesa completo en tu navegador — ninguna fila viaja a un servidor. Sirve para cualquier reporte con la misma cabecera (Usuario, Nombre de Sucursal, Tipo, Monto Neto, Transacciones, Fecha Creado…): el cálculo se rehace automáticamente para el periodo que cargues, agrupando por sucursal, usuario y forma de pago (Efectivo, GetNet, Tarjeta, Transferencia), y separando ingresos de gastos según la columna Tipo. Filas de subtotal o encabezado repetidas dentro del propio CSV se descartan de forma automática. Antes de armar el reporte final se pide el % de comisión de cada sucursal — se guarda en este navegador para el próximo informe y siempre puedes reabrirla con "editar comisiones". El botón "Descargar Excel" exporta exactamente lo que ves en pantalla (resumen o detalle diario según la pestaña activa).</p>
+  </div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/export.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
